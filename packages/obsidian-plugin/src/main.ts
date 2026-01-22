@@ -4,11 +4,13 @@ import { QdrantService } from './services/qdrant';
 import { DocumentIndexer } from './services/indexer';
 import { LinkSuggestionService } from './services/linkSuggestion';
 import { HealthCheckService } from './services/healthCheck';
+import { DocumentComparisonService } from './services/documentComparison';
 import { SearchModal } from './ui/SearchModal';
 import { JumpModal } from './ui/JumpModal';
 import { IndexModal } from './ui/IndexModal';
 import { LinkSuggestionModal } from './ui/LinkSuggestionModal';
 import { HealthCheckModal } from './ui/HealthCheckModal';
+import { CompareDocumentsModal } from './ui/DocumentComparisonModal';
 
 interface SageAISettings {
   ollamaUrl: string;
@@ -35,6 +37,7 @@ export default class SageAIPlugin extends Plugin {
   private indexer: DocumentIndexer;
   private linkSuggestion: LinkSuggestionService;
   private healthCheck: HealthCheckService;
+  private documentComparison: DocumentComparisonService;
 
   async onload() {
     await this.loadSettings();
@@ -90,6 +93,15 @@ export default class SageAIPlugin extends Plugin {
       },
     });
 
+    // Add command: Compare Documents
+    this.addCommand({
+      id: 'sage-ai-compare-docs',
+      name: 'Compare with Another Document',
+      editorCallback: () => {
+        this.openCompareDocumentsModal();
+      },
+    });
+
     // Add command: Check Status
     this.addCommand({
       id: 'sage-ai-status',
@@ -128,6 +140,11 @@ export default class SageAIPlugin extends Plugin {
     );
 
     this.healthCheck = new HealthCheckService(this.app.vault);
+
+    this.documentComparison = new DocumentComparisonService(
+      this.app.vault,
+      this.ollama
+    );
   }
 
   private async openSearchModal() {
@@ -186,6 +203,37 @@ export default class SageAIPlugin extends Plugin {
       this.app,
       activeFile,
       this.linkSuggestion
+    ).open();
+  }
+
+  private async openCompareDocumentsModal() {
+    console.log('[SageAI] Opening Compare Documents Modal');
+
+    const activeFile = this.app.workspace.getActiveFile();
+    console.log('[SageAI] Active file:', activeFile?.path);
+
+    if (!activeFile) {
+      console.warn('[SageAI] No active file');
+      new Notice('No active file');
+      return;
+    }
+
+    // Quick health check for Ollama (needed for embeddings)
+    console.log('[SageAI] Performing health check...');
+    const health = await this.indexer.healthCheck();
+    console.log('[SageAI] Health check result:', health);
+
+    if (!health.ollama.healthy) {
+      console.warn('[SageAI] Ollama not healthy:', health.ollama.message);
+      new Notice(`Sage AI: ${health.ollama.message}`);
+      return;
+    }
+
+    console.log('[SageAI] Opening compare modal...');
+    new CompareDocumentsModal(
+      this.app,
+      activeFile,
+      this.documentComparison
     ).open();
   }
 

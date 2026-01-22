@@ -420,3 +420,213 @@
   color: var(--text-muted);
   line-height: 1.5;
 }
+
+/* Document Comparison Modal */
+.sage-ai-comparison-modal {
+  padding: 20px;
+  max-width: 900px;
+  width: 100%;
+}
+
+.sage-ai-comparison-results {
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.sage-ai-comparison-section {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+}
+
+.sage-ai-comparison-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-normal);
+  border-bottom: 2px solid var(--background-modifier-border);
+  padding-bottom: 8px;
+}
+
+.sage-ai-comparison-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.sage-ai-comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.sage-ai-comparison-doc {
+  padding: 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  border-left: 3px solid var(--interactive-accent);
+}
+
+.sage-ai-comparison-stats {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+.sage-ai-comparison-stats div {
+  margin: 4px 0;
+}
+
+.sage-ai-comparison-path {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 8px;
+  font-family: var(--font-monospace);
+  word-break: break-all;
+}
+
+.sage-ai-comparison-similarity {
+  margin-top: 12px;
+}
+
+.sage-ai-comparison-similarity-bar {
+  width: 100%;
+  height: 24px;
+  background: var(--background-secondary);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.sage-ai-comparison-similarity-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 12px;
+}
+
+.sage-ai-comparison-similarity-label {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 12px 0 8px 0;
+  color: var(--text-normal);
+}
+
+.sage-ai-comparison-similarity-desc {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.sage-ai-comparison-content-stats {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  padding: 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  margin-top: 12px;
+}
+
+.sage-ai-comparison-content-stats div {
+  font-size: 13px;
+  color: var(--text-normal);
+}
+
+.sage-ai-comparison-element {
+  margin: 16px 0;
+}
+
+.sage-ai-comparison-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.sage-ai-comparison-tag {
+  padding: 4px 10px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.sage-ai-comparison-element ul {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+}
+
+.sage-ai-comparison-element li {
+  margin: 6px 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--font-monospace);
+}
+
+.sage-ai-comparison-empty {
+  font-size: 12px;
+  color: var(--text-faint);
+  font-style: italic;
+  margin-top: 8px;
+}
+
+.sage-ai-comparison-more {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-style: italic;
+  margin-top: 8px;
+}
+
+.sage-ai-comparison-keywords {
+  margin: 12px 0;
+}
+
+.sage-ai-comparison-keyword-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.sage-ai-comparison-keyword {
+  padding: 4px 10px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  font-size: 12px;
+  color: var(--text-normal);
+}
+
+.sage-ai-comparison-keyword-unique {
+  padding: 4px 10px;
+  background: var(--background-secondary);
+  border: 1px solid var(--text-accent);
+  border-radius: 12px;
+  font-size: 12px;
+  color: var(--text-accent);
+}
+
+.sage-ai-comparison-unique {
+  padding: 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+}
+
+.sage-ai-comparison-suggestions {
+  margin: 12px 0 0 0;
+  padding-left: 20px;
+}
+
+.sage-ai-comparison-suggestions li {
+  margin: 8px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}

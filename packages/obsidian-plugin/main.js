@@ -27,7 +27,7 @@ __export(main_exports, {
   default: () => SageAIPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian9 = require("obsidian");
+var import_obsidian10 = require("obsidian");
 
 // src/services/ollama.ts
 var import_obsidian = require("obsidian");
@@ -823,6 +823,221 @@ var HealthCheckService = class {
   }
 };
 
+// src/services/documentComparison.ts
+var DocumentComparisonService = class {
+  constructor(vault, ollama) {
+    this.vault = vault;
+    this.ollama = ollama;
+  }
+  /**
+   * Extract metadata from document content
+   */
+  extractMetadata(content) {
+    const lines = content.split("\n");
+    let title = "Untitled";
+    for (const line of lines) {
+      if (line.startsWith("# ")) {
+        title = line.substring(2).trim();
+        break;
+      }
+    }
+    const headings = [];
+    for (const line of lines) {
+      if (line.startsWith("##")) {
+        const h = line.replace(/^#+\s*/, "").trim();
+        if (h) {
+          headings.push(h);
+        }
+      }
+    }
+    const tagMatches = content.matchAll(/#(\w+)/g);
+    const tags = Array.from(new Set(Array.from(tagMatches, (m) => m[1])));
+    const linkMatches = content.matchAll(/\[\[([^\]]+)\]\]/g);
+    const links = Array.from(new Set(Array.from(linkMatches, (m) => m[1])));
+    const wordCount = content.split(/\s+/).filter((w) => w.length > 0).length;
+    return {
+      title,
+      headings,
+      tags,
+      links,
+      wordCount,
+      lines: lines.length
+    };
+  }
+  /**
+   * Calculate cosine similarity between two vectors
+   */
+  cosineSimilarity(vec1, vec2) {
+    if (!vec1 || !vec2 || vec1.length === 0 || vec2.length === 0) {
+      return 0;
+    }
+    let dotProduct = 0;
+    let magnitude1 = 0;
+    let magnitude2 = 0;
+    for (let i = 0; i < vec1.length; i++) {
+      dotProduct += vec1[i] * vec2[i];
+      magnitude1 += vec1[i] * vec1[i];
+      magnitude2 += vec2[i] * vec2[i];
+    }
+    magnitude1 = Math.sqrt(magnitude1);
+    magnitude2 = Math.sqrt(magnitude2);
+    if (magnitude1 === 0 || magnitude2 === 0) {
+      return 0;
+    }
+    return dotProduct / (magnitude1 * magnitude2);
+  }
+  /**
+   * Extract key phrases from content
+   */
+  extractKeyPhrases(content) {
+    const text = content.replace(/[#*`\[\]()]/g, "");
+    const words = text.toLowerCase().split(/\s+/);
+    const stopWords = /* @__PURE__ */ new Set([
+      "a",
+      "an",
+      "the",
+      "and",
+      "or",
+      "but",
+      "in",
+      "on",
+      "at",
+      "to",
+      "for",
+      "of",
+      "with",
+      "by",
+      "from",
+      "as",
+      "is",
+      "was",
+      "are",
+      "were",
+      "be",
+      "been",
+      "being",
+      "this",
+      "that",
+      "these",
+      "those",
+      "it",
+      "its",
+      "\uC774",
+      "\uADF8",
+      "\uC800",
+      "\uAC83",
+      "\uC218",
+      "\uB4F1",
+      "\uBC0F",
+      "\uB97C",
+      "\uC744",
+      "\uAC00",
+      "\uC774"
+    ]);
+    const filtered = words.filter((w) => w.length > 2 && !stopWords.has(w));
+    const counter = /* @__PURE__ */ new Map();
+    for (const word of filtered) {
+      counter.set(word, (counter.get(word) || 0) + 1);
+    }
+    const sorted = Array.from(counter.entries()).sort((a, b) => b[1] - a[1]).slice(0, 15);
+    return sorted;
+  }
+  /**
+   * Compare content using sequence matching
+   */
+  compareContent(content1, content2) {
+    const lines1 = content1.split("\n");
+    const lines2 = content2.split("\n");
+    const set1 = new Set(lines1.map((l) => l.trim()).filter((l) => l.length > 0));
+    const set2 = new Set(lines2.map((l) => l.trim()).filter((l) => l.length > 0));
+    const commonLines = Array.from(set1).filter((line) => set2.has(line)).length;
+    const totalLines = Math.max(set1.size, set2.size);
+    const similarityRatio = totalLines > 0 ? commonLines / totalLines : 0;
+    return {
+      similarityRatio,
+      commonLines,
+      totalLines
+    };
+  }
+  /**
+   * Generate suggestions based on comparison results
+   */
+  generateSuggestions(similarity, commonTags, file1, file2) {
+    const suggestions = [];
+    if (similarity > 0.7) {
+      suggestions.push("\uBB38\uC11C\uAC00 \uB9E4\uC6B0 \uC720\uC0AC\uD569\uB2C8\uB2E4. \uD558\uB098\uB85C \uD569\uCE58\uB294 \uAC83\uC744 \uACE0\uB824\uD558\uC138\uC694");
+      suggestions.push("\uB610\uB294 \uD558\uB098\uB97C \uB2E4\uB978 \uD558\uB098\uC758 \uD558\uC704 \uBB38\uC11C\uB85C \uC7AC\uAD6C\uC131\uD558\uC138\uC694");
+    } else if (similarity > 0.4) {
+      suggestions.push("\uAD00\uB828\uB41C \uB0B4\uC6A9\uC774 \uC788\uC2B5\uB2C8\uB2E4. \uC0C1\uD638 \uCC38\uC870 \uB9C1\uD06C\uB97C \uCD94\uAC00\uD558\uC138\uC694");
+      suggestions.push(`\uC608: [[${file1.basename}]], [[${file2.basename}]]`);
+    } else {
+      suggestions.push("\uC11C\uB85C \uB2E4\uB978 \uC8FC\uC81C\uB97C \uB2E4\uB8E8\uACE0 \uC788\uC2B5\uB2C8\uB2E4");
+      suggestions.push("\uD558\uB098\uC758 MOC(Map of Content)\uB85C \uC5F0\uACB0\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4");
+    }
+    if (commonTags.length > 0) {
+      suggestions.push(`\uACF5\uD1B5 \uD0DC\uADF8 ${commonTags.length}\uAC1C\uB85C \uC5F0\uACB0\uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4`);
+    }
+    return suggestions;
+  }
+  /**
+   * Compare two documents
+   */
+  async compareDocuments(file1, file2) {
+    try {
+      console.log("[DocumentComparison] Comparing:", file1.path, "vs", file2.path);
+      const content1 = await this.vault.cachedRead(file1);
+      const content2 = await this.vault.cachedRead(file2);
+      const meta1 = this.extractMetadata(content1);
+      const meta2 = this.extractMetadata(content2);
+      console.log("[DocumentComparison] Metadata extracted");
+      let semanticSimilarity = 0;
+      try {
+        console.log("[DocumentComparison] Getting embeddings...");
+        const emb1 = await this.ollama.getEmbedding(content1.substring(0, 2e3));
+        const emb2 = await this.ollama.getEmbedding(content2.substring(0, 2e3));
+        semanticSimilarity = this.cosineSimilarity(emb1, emb2);
+        console.log("[DocumentComparison] Semantic similarity:", semanticSimilarity);
+      } catch (error) {
+        console.error("[DocumentComparison] Error calculating similarity:", error);
+      }
+      const contentComparison = this.compareContent(content1, content2);
+      const commonTags = meta1.tags.filter((t) => meta2.tags.includes(t));
+      const commonLinks = meta1.links.filter((l) => meta2.links.includes(l));
+      const phrases1 = this.extractKeyPhrases(content1);
+      const phrases2 = this.extractKeyPhrases(content2);
+      const words1 = new Set(phrases1.map((p) => p[0]));
+      const words2 = new Set(phrases2.map((p) => p[0]));
+      const commonKeywords = Array.from(words1).filter((w) => words2.has(w)).slice(0, 10);
+      const uniqueKeywords1 = phrases1.filter((p) => !words2.has(p[0])).slice(0, 5).map((p) => p[0]);
+      const uniqueKeywords2 = phrases2.filter((p) => !words1.has(p[0])).slice(0, 5).map((p) => p[0]);
+      const suggestions = this.generateSuggestions(
+        semanticSimilarity,
+        commonTags,
+        file1,
+        file2
+      );
+      console.log("[DocumentComparison] Comparison complete");
+      return {
+        file1,
+        file2,
+        meta1,
+        meta2,
+        semanticSimilarity,
+        contentComparison,
+        commonTags,
+        commonLinks,
+        commonKeywords,
+        uniqueKeywords1,
+        uniqueKeywords2,
+        suggestions
+      };
+    } catch (error) {
+      console.error("[DocumentComparison] Error comparing documents:", error);
+      throw error;
+    }
+  }
+};
+
 // src/ui/SearchModal.ts
 var import_obsidian4 = require("obsidian");
 var SearchModal = class extends import_obsidian4.Modal {
@@ -1313,6 +1528,254 @@ var HealthCheckModal = class extends import_obsidian8.Modal {
   }
 };
 
+// src/ui/DocumentComparisonModal.ts
+var import_obsidian9 = require("obsidian");
+var FileSelectionModal = class extends import_obsidian9.SuggestModal {
+  constructor(app, currentFile, onSelect) {
+    super(app);
+    this.currentFile = currentFile;
+    this.onSelect = onSelect;
+    this.setPlaceholder("Select a document to compare with...");
+  }
+  getSuggestions(query) {
+    const files = this.app.vault.getMarkdownFiles();
+    const filtered = files.filter(
+      (file) => file.path !== this.currentFile.path && file.path.toLowerCase().includes(query.toLowerCase())
+    );
+    return filtered.sort((a, b) => b.stat.mtime - a.stat.mtime);
+  }
+  renderSuggestion(file, el) {
+    el.createDiv({ text: file.basename, cls: "suggestion-title" });
+    el.createDiv({ text: file.path, cls: "suggestion-note" });
+  }
+  onChooseSuggestion(file) {
+    this.onSelect(file);
+  }
+};
+var DocumentComparisonModal = class extends import_obsidian9.Modal {
+  constructor(app, result) {
+    super(app);
+    this.result = result;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("sage-ai-comparison-modal");
+    const header = contentEl.createDiv("sage-ai-modal-header");
+    header.createEl("h2", { text: "\u{1F4CA} Document Comparison" });
+    header.createEl("p", {
+      text: "Detailed analysis of similarities and differences",
+      cls: "sage-ai-modal-description"
+    });
+    const resultsEl = contentEl.createDiv("sage-ai-comparison-results");
+    this.renderMetadata(resultsEl);
+    this.renderSemanticSimilarity(resultsEl);
+    this.renderContentComparison(resultsEl);
+    this.renderCommonElements(resultsEl);
+    this.renderKeywords(resultsEl);
+    this.renderSuggestions(resultsEl);
+  }
+  renderMetadata(container) {
+    const section = container.createDiv("sage-ai-comparison-section");
+    section.createEl("h3", { text: "\u{1F4C4} Document Metadata" });
+    const grid = section.createDiv("sage-ai-comparison-grid");
+    const doc1 = grid.createDiv("sage-ai-comparison-doc");
+    doc1.createEl("h4", { text: `1. ${this.result.meta1.title}` });
+    const stats1 = doc1.createDiv("sage-ai-comparison-stats");
+    stats1.createEl("div", {
+      text: `Words: ${this.result.meta1.wordCount} | Lines: ${this.result.meta1.lines}`
+    });
+    stats1.createEl("div", {
+      text: `Headings: ${this.result.meta1.headings.length} | Tags: ${this.result.meta1.tags.length} | Links: ${this.result.meta1.links.length}`
+    });
+    const path1 = doc1.createDiv("sage-ai-comparison-path");
+    path1.setText(this.result.file1.path);
+    const doc2 = grid.createDiv("sage-ai-comparison-doc");
+    doc2.createEl("h4", { text: `2. ${this.result.meta2.title}` });
+    const stats2 = doc2.createDiv("sage-ai-comparison-stats");
+    stats2.createEl("div", {
+      text: `Words: ${this.result.meta2.wordCount} | Lines: ${this.result.meta2.lines}`
+    });
+    stats2.createEl("div", {
+      text: `Headings: ${this.result.meta2.headings.length} | Tags: ${this.result.meta2.tags.length} | Links: ${this.result.meta2.links.length}`
+    });
+    const path2 = doc2.createDiv("sage-ai-comparison-path");
+    path2.setText(this.result.file2.path);
+  }
+  renderSemanticSimilarity(container) {
+    const section = container.createDiv("sage-ai-comparison-section");
+    section.createEl("h3", { text: "\u{1F50D} Semantic Similarity" });
+    const simBox = section.createDiv("sage-ai-comparison-similarity");
+    const percent = Math.round(this.result.semanticSimilarity * 100);
+    const bar = simBox.createDiv("sage-ai-comparison-similarity-bar");
+    const fill = bar.createDiv("sage-ai-comparison-similarity-fill");
+    fill.style.width = `${percent}%`;
+    if (percent > 80) {
+      fill.style.background = "var(--interactive-success)";
+    } else if (percent > 60) {
+      fill.style.background = "var(--interactive-accent)";
+    } else if (percent > 40) {
+      fill.style.background = "var(--text-warning)";
+    } else {
+      fill.style.background = "var(--text-error)";
+    }
+    const label = simBox.createDiv("sage-ai-comparison-similarity-label");
+    label.setText(`${percent}%`);
+    const desc = simBox.createDiv("sage-ai-comparison-similarity-desc");
+    if (percent > 80) {
+      desc.setText("\u2705 Very similar documents");
+    } else if (percent > 60) {
+      desc.setText("\u2705 Similar topics");
+    } else if (percent > 40) {
+      desc.setText("\u26A0\uFE0F Some relevance");
+    } else {
+      desc.setText("\u274C Different topics");
+    }
+  }
+  renderContentComparison(container) {
+    const section = container.createDiv("sage-ai-comparison-section");
+    section.createEl("h3", { text: "\u{1F4DD} Content Comparison" });
+    const comp = this.result.contentComparison;
+    const percent = Math.round(comp.similarityRatio * 100);
+    const stats = section.createDiv("sage-ai-comparison-content-stats");
+    stats.createEl("div", { text: `Text Match: ${percent}%` });
+    stats.createEl("div", {
+      text: `Common Lines: ${comp.commonLines} / ${comp.totalLines}`
+    });
+  }
+  renderCommonElements(container) {
+    const section = container.createDiv("sage-ai-comparison-section");
+    section.createEl("h3", { text: "\u{1F517} Common Elements" });
+    const tagsBox = section.createDiv("sage-ai-comparison-element");
+    tagsBox.createEl("h4", { text: "\u{1F3F7}\uFE0F Tags" });
+    if (this.result.commonTags.length > 0) {
+      const tagList = tagsBox.createDiv("sage-ai-comparison-tag-list");
+      this.result.commonTags.forEach((tag) => {
+        tagList.createEl("span", {
+          text: `#${tag}`,
+          cls: "sage-ai-comparison-tag"
+        });
+      });
+    } else {
+      tagsBox.createEl("div", {
+        text: "(None)",
+        cls: "sage-ai-comparison-empty"
+      });
+    }
+    const linksBox = section.createDiv("sage-ai-comparison-element");
+    linksBox.createEl("h4", { text: "\u{1F517} Links" });
+    if (this.result.commonLinks.length > 0) {
+      const linkList = linksBox.createEl("ul");
+      this.result.commonLinks.slice(0, 5).forEach((link) => {
+        linkList.createEl("li", { text: `[[${link}]]` });
+      });
+      if (this.result.commonLinks.length > 5) {
+        linksBox.createEl("div", {
+          text: `... +${this.result.commonLinks.length - 5} more`,
+          cls: "sage-ai-comparison-more"
+        });
+      }
+    } else {
+      linksBox.createEl("div", {
+        text: "(None)",
+        cls: "sage-ai-comparison-empty"
+      });
+    }
+  }
+  renderKeywords(container) {
+    const section = container.createDiv("sage-ai-comparison-section");
+    section.createEl("h3", { text: "\u{1F4A1} Keywords" });
+    const commonBox = section.createDiv("sage-ai-comparison-keywords");
+    commonBox.createEl("h4", { text: "Common Keywords" });
+    if (this.result.commonKeywords.length > 0) {
+      const keywordList = commonBox.createDiv("sage-ai-comparison-keyword-list");
+      this.result.commonKeywords.forEach((kw) => {
+        keywordList.createEl("span", {
+          text: kw,
+          cls: "sage-ai-comparison-keyword"
+        });
+      });
+    } else {
+      commonBox.createEl("div", {
+        text: "(None)",
+        cls: "sage-ai-comparison-empty"
+      });
+    }
+    const grid = section.createDiv("sage-ai-comparison-grid");
+    const unique1 = grid.createDiv("sage-ai-comparison-unique");
+    unique1.createEl("h4", { text: `Document 1 Unique` });
+    if (this.result.uniqueKeywords1.length > 0) {
+      const list1 = unique1.createDiv("sage-ai-comparison-keyword-list");
+      this.result.uniqueKeywords1.forEach((kw) => {
+        list1.createEl("span", {
+          text: kw,
+          cls: "sage-ai-comparison-keyword-unique"
+        });
+      });
+    } else {
+      unique1.createEl("div", {
+        text: "(None)",
+        cls: "sage-ai-comparison-empty"
+      });
+    }
+    const unique2 = grid.createDiv("sage-ai-comparison-unique");
+    unique2.createEl("h4", { text: `Document 2 Unique` });
+    if (this.result.uniqueKeywords2.length > 0) {
+      const list2 = unique2.createDiv("sage-ai-comparison-keyword-list");
+      this.result.uniqueKeywords2.forEach((kw) => {
+        list2.createEl("span", {
+          text: kw,
+          cls: "sage-ai-comparison-keyword-unique"
+        });
+      });
+    } else {
+      unique2.createEl("div", {
+        text: "(None)",
+        cls: "sage-ai-comparison-empty"
+      });
+    }
+  }
+  renderSuggestions(container) {
+    const section = container.createDiv("sage-ai-comparison-section");
+    section.createEl("h3", { text: "\u{1F4A1} Suggestions" });
+    const list = section.createEl("ul", { cls: "sage-ai-comparison-suggestions" });
+    this.result.suggestions.forEach((suggestion) => {
+      list.createEl("li", { text: suggestion });
+    });
+  }
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
+};
+var CompareDocumentsModal = class {
+  constructor(app, currentFile, comparisonService) {
+    this.app = app;
+    this.currentFile = currentFile;
+    this.comparisonService = comparisonService;
+  }
+  async open() {
+    console.log("[CompareDocuments] Opening file selection modal");
+    new FileSelectionModal(this.app, this.currentFile, async (selectedFile) => {
+      console.log("[CompareDocuments] Selected file:", selectedFile.path);
+      const notice = new import_obsidian9.Notice("\u{1F50D} Comparing documents...", 0);
+      try {
+        const result = await this.comparisonService.compareDocuments(
+          this.currentFile,
+          selectedFile
+        );
+        notice.hide();
+        new import_obsidian9.Notice("\u2705 Comparison complete!");
+        new DocumentComparisonModal(this.app, result).open();
+      } catch (error) {
+        notice.hide();
+        console.error("[CompareDocuments] Error:", error);
+        new import_obsidian9.Notice(`\u274C Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
+    }).open();
+  }
+};
+
 // src/main.ts
 var DEFAULT_SETTINGS = {
   ollamaUrl: "http://127.0.0.1:11434",
@@ -1322,7 +1785,7 @@ var DEFAULT_SETTINGS = {
   maxResults: 8,
   minScore: 0.3
 };
-var SageAIPlugin = class extends import_obsidian9.Plugin {
+var SageAIPlugin = class extends import_obsidian10.Plugin {
   async onload() {
     await this.loadSettings();
     this.initializeServices();
@@ -1365,6 +1828,13 @@ var SageAIPlugin = class extends import_obsidian9.Plugin {
       }
     });
     this.addCommand({
+      id: "sage-ai-compare-docs",
+      name: "Compare with Another Document",
+      editorCallback: () => {
+        this.openCompareDocumentsModal();
+      }
+    });
+    this.addCommand({
       id: "sage-ai-status",
       name: "Check Connection Status",
       callback: async () => {
@@ -1393,15 +1863,19 @@ var SageAIPlugin = class extends import_obsidian9.Plugin {
       this.qdrant
     );
     this.healthCheck = new HealthCheckService(this.app.vault);
+    this.documentComparison = new DocumentComparisonService(
+      this.app.vault,
+      this.ollama
+    );
   }
   async openSearchModal() {
     const health = await this.indexer.healthCheck();
     if (!health.ollama.healthy) {
-      new import_obsidian9.Notice(`Sage AI: ${health.ollama.message}`);
+      new import_obsidian10.Notice(`Sage AI: ${health.ollama.message}`);
       return;
     }
     if (!health.qdrant.healthy) {
-      new import_obsidian9.Notice(`Sage AI: ${health.qdrant.message}. Run "Rebuild Index" first.`);
+      new import_obsidian10.Notice(`Sage AI: ${health.qdrant.message}. Run "Rebuild Index" first.`);
       return;
     }
     new SearchModal(
@@ -1417,7 +1891,7 @@ var SageAIPlugin = class extends import_obsidian9.Plugin {
     console.log("[SageAI] Active file:", activeFile == null ? void 0 : activeFile.path);
     if (!activeFile) {
       console.warn("[SageAI] No active file");
-      new import_obsidian9.Notice("No active file");
+      new import_obsidian10.Notice("No active file");
       return;
     }
     console.log("[SageAI] Performing health check...");
@@ -1425,12 +1899,12 @@ var SageAIPlugin = class extends import_obsidian9.Plugin {
     console.log("[SageAI] Health check result:", health);
     if (!health.ollama.healthy) {
       console.warn("[SageAI] Ollama not healthy:", health.ollama.message);
-      new import_obsidian9.Notice(`Sage AI: ${health.ollama.message}`);
+      new import_obsidian10.Notice(`Sage AI: ${health.ollama.message}`);
       return;
     }
     if (!health.qdrant.healthy) {
       console.warn("[SageAI] Qdrant not healthy:", health.qdrant.message);
-      new import_obsidian9.Notice(`Sage AI: ${health.qdrant.message}. Run "Rebuild Index" first.`);
+      new import_obsidian10.Notice(`Sage AI: ${health.qdrant.message}. Run "Rebuild Index" first.`);
       return;
     }
     console.log("[SageAI] Opening modal...");
@@ -1440,8 +1914,32 @@ var SageAIPlugin = class extends import_obsidian9.Plugin {
       this.linkSuggestion
     ).open();
   }
+  async openCompareDocumentsModal() {
+    console.log("[SageAI] Opening Compare Documents Modal");
+    const activeFile = this.app.workspace.getActiveFile();
+    console.log("[SageAI] Active file:", activeFile == null ? void 0 : activeFile.path);
+    if (!activeFile) {
+      console.warn("[SageAI] No active file");
+      new import_obsidian10.Notice("No active file");
+      return;
+    }
+    console.log("[SageAI] Performing health check...");
+    const health = await this.indexer.healthCheck();
+    console.log("[SageAI] Health check result:", health);
+    if (!health.ollama.healthy) {
+      console.warn("[SageAI] Ollama not healthy:", health.ollama.message);
+      new import_obsidian10.Notice(`Sage AI: ${health.ollama.message}`);
+      return;
+    }
+    console.log("[SageAI] Opening compare modal...");
+    new CompareDocumentsModal(
+      this.app,
+      activeFile,
+      this.documentComparison
+    ).open();
+  }
   async checkStatus() {
-    new import_obsidian9.Notice("Sage AI: Checking connections...");
+    new import_obsidian10.Notice("Sage AI: Checking connections...");
     try {
       const health = await this.indexer.healthCheck();
       const stats = await this.indexer.getStats();
@@ -1455,9 +1953,9 @@ Qdrant: ${health.qdrant.healthy ? "\u2713" : "\u2717"} ${health.qdrant.message}`
 
 Indexed documents: ${stats.totalDocuments}`;
       }
-      new import_obsidian9.Notice(message, 1e4);
+      new import_obsidian10.Notice(message, 1e4);
     } catch (error) {
-      new import_obsidian9.Notice(
+      new import_obsidian10.Notice(
         `Sage AI: Error checking status - ${error instanceof Error ? error.message : "Unknown error"}`
       );
     }
@@ -1483,7 +1981,7 @@ Indexed documents: ${stats.totalDocuments}`;
     }
   }
 };
-var SageAISettingTab = class extends import_obsidian9.PluginSettingTab {
+var SageAISettingTab = class extends import_obsidian10.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -1493,46 +1991,46 @@ var SageAISettingTab = class extends import_obsidian9.PluginSettingTab {
     containerEl.empty();
     containerEl.createEl("h2", { text: "Sage AI Settings" });
     containerEl.createEl("h3", { text: "Ollama Configuration" });
-    new import_obsidian9.Setting(containerEl).setName("Ollama URL").setDesc("URL of your Ollama server").addText(
+    new import_obsidian10.Setting(containerEl).setName("Ollama URL").setDesc("URL of your Ollama server").addText(
       (text) => text.setPlaceholder("http://127.0.0.1:11434").setValue(this.plugin.settings.ollamaUrl).onChange(async (value) => {
         this.plugin.settings.ollamaUrl = value;
         await this.plugin.saveSettings();
       })
     );
-    new import_obsidian9.Setting(containerEl).setName("Embedding Model").setDesc("Ollama model for generating embeddings (bge-m3 recommended)").addText(
+    new import_obsidian10.Setting(containerEl).setName("Embedding Model").setDesc("Ollama model for generating embeddings (bge-m3 recommended)").addText(
       (text) => text.setPlaceholder("bge-m3").setValue(this.plugin.settings.ollamaModel).onChange(async (value) => {
         this.plugin.settings.ollamaModel = value;
         await this.plugin.saveSettings();
       })
     );
     containerEl.createEl("h3", { text: "Qdrant Configuration" });
-    new import_obsidian9.Setting(containerEl).setName("Qdrant URL").setDesc("URL of your Qdrant server").addText(
+    new import_obsidian10.Setting(containerEl).setName("Qdrant URL").setDesc("URL of your Qdrant server").addText(
       (text) => text.setPlaceholder("http://127.0.0.1:6333").setValue(this.plugin.settings.qdrantUrl).onChange(async (value) => {
         this.plugin.settings.qdrantUrl = value;
         await this.plugin.saveSettings();
       })
     );
-    new import_obsidian9.Setting(containerEl).setName("Collection Name").setDesc("Qdrant collection name for storing vectors").addText(
+    new import_obsidian10.Setting(containerEl).setName("Collection Name").setDesc("Qdrant collection name for storing vectors").addText(
       (text) => text.setPlaceholder("obsidian_docs").setValue(this.plugin.settings.qdrantCollection).onChange(async (value) => {
         this.plugin.settings.qdrantCollection = value;
         await this.plugin.saveSettings();
       })
     );
     containerEl.createEl("h3", { text: "Search Configuration" });
-    new import_obsidian9.Setting(containerEl).setName("Max Results").setDesc("Maximum number of search results to return").addSlider(
+    new import_obsidian10.Setting(containerEl).setName("Max Results").setDesc("Maximum number of search results to return").addSlider(
       (slider) => slider.setLimits(1, 20, 1).setValue(this.plugin.settings.maxResults).setDynamicTooltip().onChange(async (value) => {
         this.plugin.settings.maxResults = value;
         await this.plugin.saveSettings();
       })
     );
-    new import_obsidian9.Setting(containerEl).setName("Minimum Score").setDesc("Minimum similarity score for results (0-1)").addSlider(
+    new import_obsidian10.Setting(containerEl).setName("Minimum Score").setDesc("Minimum similarity score for results (0-1)").addSlider(
       (slider) => slider.setLimits(0, 1, 0.05).setValue(this.plugin.settings.minScore).setDynamicTooltip().onChange(async (value) => {
         this.plugin.settings.minScore = value;
         await this.plugin.saveSettings();
       })
     );
     containerEl.createEl("h3", { text: "Connection Test" });
-    new import_obsidian9.Setting(containerEl).setName("Test Connections").setDesc("Test connection to Ollama and Qdrant servers").addButton(
+    new import_obsidian10.Setting(containerEl).setName("Test Connections").setDesc("Test connection to Ollama and Qdrant servers").addButton(
       (button) => button.setButtonText("Test").onClick(async () => {
         button.setButtonText("Testing...");
         button.setDisabled(true);
@@ -1553,9 +2051,9 @@ var SageAISettingTab = class extends import_obsidian9.PluginSettingTab {
           message += `Ollama: ${ollamaHealth.healthy ? "\u2713" : "\u2717"} ${ollamaHealth.message}
 `;
           message += `Qdrant: ${qdrantHealth.healthy ? "\u2713" : "\u2717"} ${qdrantHealth.message}`;
-          new import_obsidian9.Notice(message, 8e3);
+          new import_obsidian10.Notice(message, 8e3);
         } catch (error) {
-          new import_obsidian9.Notice(
+          new import_obsidian10.Notice(
             `Error: ${error instanceof Error ? error.message : "Test failed"}`
           );
         } finally {
