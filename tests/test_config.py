@@ -69,7 +69,8 @@ class TestConfig:
 
         # vault_path should return a Path object
         assert isinstance(config.vault_path, Path)
-        assert config.vault_path == mock_vault
+        # Use resolve() to handle macOS /private symlink
+        assert config.vault_path.resolve() == mock_vault.resolve()
 
     def test_config_db_path_property(self, mock_config_file: Path, temp_dir: Path):
         """Test db_path property."""
@@ -81,7 +82,8 @@ class TestConfig:
         config.load(str(mock_config_file))
 
         expected_db_path = temp_dir / "db" / "automation.db"
-        assert config.db_path == expected_db_path
+        # Use resolve() to handle macOS /private symlink
+        assert config.db_path.resolve() == expected_db_path.resolve()
 
     def test_config_service_properties(self, mock_config_file: Path):
         """Test service-related properties."""

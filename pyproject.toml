@@ -67,11 +67,11 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-username/obsidian-local-sage"
-Documentation = "https://github.com/your-username/obsidian-local-sage#readme"
-Repository = "https://github.com/your-username/obsidian-local-sage.git"
-Issues = "https://github.com/your-username/obsidian-local-sage/issues"
-Changelog = "https://github.com/your-username/obsidian-local-sage/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/kakao-lucas-ms/obsidian-local-sage"
+Documentation = "https://github.com/kakao-lucas-ms/obsidian-local-sage#readme"
+Repository = "https://github.com/kakao-lucas-ms/obsidian-local-sage.git"
+Issues = "https://github.com/kakao-lucas-ms/obsidian-local-sage/issues"
+Changelog = "https://github.com/kakao-lucas-ms/obsidian-local-sage/blob/main/CHANGELOG.md"
 
 [project.scripts]
 obsidian-sage = "src.cli:cli_main"

@@ -85,7 +85,7 @@ class TestMainCLI:
         mock_config.qdrant_collection = "test_docs"
         mock_config.debug = False
 
-        with patch("src.cli.config", mock_config):
+        with patch("src.core.config.config", mock_config):
             result = show_config(path_only=False)
 
         assert result == 0
@@ -99,7 +99,7 @@ class TestMainCLI:
         mock_config = MagicMock()
         mock_config._config_path = mock_config_file
 
-        with patch("src.cli.config", mock_config):
+        with patch("src.core.config.config", mock_config):
             result = show_config(path_only=True)
 
         assert result == 0

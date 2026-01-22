@@ -1,0 +1,37 @@
+[flake8]
+max-line-length = 100
+exclude =
+    .git,
+    __pycache__,
+    .mypy_cache,
+    .pytest_cache,
+    .venv,
+    venv,
+    build,
+    dist,
+    *.egg-info
+
+# Ignore some common issues
+ignore =
+    # E501: line too long (handled by black)
+    E501,
+    # W503: line break before binary operator (black prefers this)
+    W503,
+    # E203: whitespace before ':' (black disagrees)
+    E203,
+    # E266: too many leading '#' for block comment
+    E266
+
+per-file-ignores =
+    # Allow unused imports in __init__.py files
+    __init__.py: F401
+    # Allow assert in tests
+    tests/*.py: S101
+
+# McCabe complexity
+max-complexity = 10
+
+# Show source and count
+show-source = true
+count = true
+statistics = true

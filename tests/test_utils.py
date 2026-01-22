@@ -92,6 +92,11 @@ class TestDatabase:
                 INSERT INTO document_index (file_path, file_name, title, content, tags)
                 VALUES (?, ?, ?, ?, ?)
             """, doc)
+            # Also insert into FTS (contentless FTS requires manual sync)
+            cursor.execute("""
+                INSERT INTO document_fts (rowid, title, content, tags, aliases)
+                VALUES (last_insert_rowid(), ?, ?, ?, ?)
+            """, (doc[2], doc[3], doc[4], ""))
         conn.commit()
 
         # Search for "programming"
