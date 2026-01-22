@@ -5,7 +5,6 @@ Tests for the CLI entry points.
 import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-import subprocess
 
 import pytest
 

@@ -2,7 +2,6 @@
 Pytest configuration and fixtures for Obsidian Local Sage tests.
 """
 
-import os
 import sys
 import tempfile
 import shutil

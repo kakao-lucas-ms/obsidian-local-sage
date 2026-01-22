@@ -4,9 +4,7 @@ Obsidian: Vault Health Check
 Find and report various issues in your Obsidian vault
 """
 
-import os
 import sys
-import sqlite3
 import re
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -21,6 +19,7 @@ from src.core.config import config
 # Use config values
 DB_PATH = str(config.db_path)
 VAULT_PATH = str(config.vault_path)
+
 
 class HealthChecker:
     def __init__(self, vault_path):
@@ -37,17 +36,16 @@ class HealthChecker:
 
         for doc in docs:
             try:
-                with open(doc, 'r', encoding='utf-8') as f:
+                with open(doc, "r", encoding="utf-8") as f:
                     content = f.read().strip()
 
                 if len(content) == 0:
-                    self.issues['empty'].append(str(doc.relative_to(self.vault_path)))
+                    self.issues["empty"].append(str(doc.relative_to(self.vault_path)))
                 elif len(content) < 20:
-                    self.issues['nearly_empty'].append((
-                        str(doc.relative_to(self.vault_path)),
-                        len(content)
-                    ))
-            except:
+                    self.issues["nearly_empty"].append(
+                        (str(doc.relative_to(self.vault_path)), len(content))
+                    )
+            except Exception:
                 continue
 
     def check_orphaned_documents(self, docs):
@@ -59,17 +57,17 @@ class HealthChecker:
 
         for doc in docs:
             try:
-                with open(doc, 'r', encoding='utf-8') as f:
+                with open(doc, "r", encoding="utf-8") as f:
                     content = f.read()
 
                 # Find all wikilinks
-                links = re.findall(r'\[\[([^\]|]+)', content)
+                links = re.findall(r"\[\[([^\]|]+)", content)
 
                 for link in links:
                     target = link.strip()
                     incoming_links[target].add(str(doc.relative_to(self.vault_path)))
 
-            except:
+            except Exception:
                 continue
 
         # Find documents with no incoming links
@@ -77,10 +75,11 @@ class HealthChecker:
             doc_name = doc.stem
             if doc_name not in incoming_links and len(incoming_links.get(doc_name, [])) == 0:
                 # Check if it's an index or MOC
-                is_special = any(keyword in doc_name.lower()
-                                for keyword in ['index', 'moc', 'readme', '목차'])
+                is_special = any(
+                    keyword in doc_name.lower() for keyword in ["index", "moc", "readme", "목차"]
+                )
                 if not is_special:
-                    self.issues['orphaned'].append(str(doc.relative_to(self.vault_path)))
+                    self.issues["orphaned"].append(str(doc.relative_to(self.vault_path)))
 
     def check_broken_links(self, docs):
         """Find broken wikilinks"""
@@ -88,30 +87,29 @@ class HealthChecker:
 
         for doc in docs:
             try:
-                with open(doc, 'r', encoding='utf-8') as f:
+                with open(doc, "r", encoding="utf-8") as f:
                     content = f.read()
 
                 # Find all wikilinks
-                links = re.findall(r'\[\[([^\]|]+)', content)
+                links = re.findall(r"\[\[([^\]|]+)", content)
 
                 for link in links:
                     target = link.strip()
 
                     # Try to find target file
                     found = False
-                    for ext in ['.md', '']:
+                    for ext in [".md", ""]:
                         target_path = self.vault_path / f"{target}{ext}"
                         if target_path.exists():
                             found = True
                             break
 
                     if not found:
-                        self.issues['broken_links'].append((
-                            str(doc.relative_to(self.vault_path)),
-                            target
-                        ))
+                        self.issues["broken_links"].append(
+                            (str(doc.relative_to(self.vault_path)), target)
+                        )
 
-            except:
+            except Exception:
                 continue
 
     def check_duplicate_names(self, docs):
@@ -125,46 +123,43 @@ class HealthChecker:
 
         for name, paths in names.items():
             if len(paths) > 1:
-                self.issues['duplicates'].append((name, paths))
+                self.issues["duplicates"].append((name, paths))
 
     def check_old_documents(self, docs):
         """Find documents not modified in a long time"""
         print("⏰ 오래된 문서 검사...")
 
-        old_days = config.get('features.health_check.old_document_days', 365)
+        old_days = config.get("features.health_check.old_document_days", 365)
         threshold = datetime.now() - timedelta(days=old_days)
 
         for doc in docs:
             try:
                 mtime = datetime.fromtimestamp(doc.stat().st_mtime)
                 if mtime < threshold:
-                    self.issues['old'].append((
-                        str(doc.relative_to(self.vault_path)),
-                        (datetime.now() - mtime).days
-                    ))
-            except:
+                    self.issues["old"].append(
+                        (str(doc.relative_to(self.vault_path)), (datetime.now() - mtime).days)
+                    )
+            except Exception:
                 continue
 
     def check_large_documents(self, docs):
         """Find very large documents"""
         print("📏 큰 문서 검사...")
 
-        large_kb = config.get('features.health_check.large_document_kb', 100)
+        large_kb = config.get("features.health_check.large_document_kb", 100)
         size_threshold = large_kb * 1000
 
         for doc in docs:
             try:
                 size = doc.stat().st_size
                 if size > size_threshold:
-                    with open(doc, 'r', encoding='utf-8') as f:
+                    with open(doc, "r", encoding="utf-8") as f:
                         lines = len(f.readlines())
 
-                    self.issues['large'].append((
-                        str(doc.relative_to(self.vault_path)),
-                        size,
-                        lines
-                    ))
-            except:
+                    self.issues["large"].append(
+                        (str(doc.relative_to(self.vault_path)), size, lines)
+                    )
+            except Exception:
                 continue
 
     def check_missing_tags(self, docs):
@@ -173,16 +168,16 @@ class HealthChecker:
 
         for doc in docs:
             try:
-                with open(doc, 'r', encoding='utf-8') as f:
+                with open(doc, "r", encoding="utf-8") as f:
                     content = f.read()
 
                 # Find tags
-                tags = re.findall(r'#(\w+)', content)
+                tags = re.findall(r"#(\w+)", content)
 
                 if not tags:
-                    self.issues['no_tags'].append(str(doc.relative_to(self.vault_path)))
+                    self.issues["no_tags"].append(str(doc.relative_to(self.vault_path)))
 
-            except:
+            except Exception:
                 continue
 
     def check_todo_items(self, docs):
@@ -191,19 +186,16 @@ class HealthChecker:
 
         for doc in docs:
             try:
-                with open(doc, 'r', encoding='utf-8') as f:
+                with open(doc, "r", encoding="utf-8") as f:
                     content = f.read()
 
                 # Find uncompleted TODO items
-                todos = re.findall(r'- \[ \] (.+)', content)
+                todos = re.findall(r"- \[ \] (.+)", content)
 
                 if todos:
-                    self.issues['todos'].append((
-                        str(doc.relative_to(self.vault_path)),
-                        len(todos)
-                    ))
+                    self.issues["todos"].append((str(doc.relative_to(self.vault_path)), len(todos)))
 
-            except:
+            except Exception:
                 continue
 
     def print_report(self):
@@ -222,89 +214,89 @@ class HealthChecker:
             return
 
         # Empty documents
-        if self.issues['empty']:
+        if self.issues["empty"]:
             print(f"📄 빈 문서: {len(self.issues['empty'])}개")
-            for path in self.issues['empty'][:5]:
+            for path in self.issues["empty"][:5]:
                 print(f"   • {path}")
-            if len(self.issues['empty']) > 5:
+            if len(self.issues["empty"]) > 5:
                 print(f"   ... +{len(self.issues['empty']) - 5}개 더")
             print()
 
         # Nearly empty
-        if self.issues['nearly_empty']:
+        if self.issues["nearly_empty"]:
             print(f"⚠️  거의 빈 문서 (< 20자): {len(self.issues['nearly_empty'])}개")
-            for path, size in self.issues['nearly_empty'][:5]:
+            for path, size in self.issues["nearly_empty"][:5]:
                 print(f"   • {path} ({size}자)")
-            if len(self.issues['nearly_empty']) > 5:
+            if len(self.issues["nearly_empty"]) > 5:
                 print(f"   ... +{len(self.issues['nearly_empty']) - 5}개 더")
             print()
 
         # Orphaned
-        if self.issues['orphaned']:
+        if self.issues["orphaned"]:
             print(f"🔗 고립된 문서 (링크 없음): {len(self.issues['orphaned'])}개")
-            for path in self.issues['orphaned'][:5]:
+            for path in self.issues["orphaned"][:5]:
                 print(f"   • {path}")
-            if len(self.issues['orphaned']) > 5:
+            if len(self.issues["orphaned"]) > 5:
                 print(f"   ... +{len(self.issues['orphaned']) - 5}개 더")
             print()
 
         # Broken links
-        if self.issues['broken_links']:
+        if self.issues["broken_links"]:
             print(f"🔗 깨진 링크: {len(self.issues['broken_links'])}개")
-            for doc_path, link in self.issues['broken_links'][:5]:
+            for doc_path, link in self.issues["broken_links"][:5]:
                 print(f"   • {doc_path} → [[{link}]]")
-            if len(self.issues['broken_links']) > 5:
+            if len(self.issues["broken_links"]) > 5:
                 print(f"   ... +{len(self.issues['broken_links']) - 5}개 더")
             print()
 
         # Duplicates
-        if self.issues['duplicates']:
+        if self.issues["duplicates"]:
             print(f"📁 중복 이름: {len(self.issues['duplicates'])}개")
-            for name, paths in self.issues['duplicates'][:3]:
+            for name, paths in self.issues["duplicates"][:3]:
                 print(f"   • {name}:")
                 for path in paths:
                     print(f"     - {path}")
-            if len(self.issues['duplicates']) > 3:
+            if len(self.issues["duplicates"]) > 3:
                 print(f"   ... +{len(self.issues['duplicates']) - 3}개 더")
             print()
 
         # Old documents
-        if self.issues['old']:
+        if self.issues["old"]:
             print(f"⏰ 오래된 문서 (> 1년): {len(self.issues['old'])}개")
-            sorted_old = sorted(self.issues['old'], key=lambda x: x[1], reverse=True)
+            sorted_old = sorted(self.issues["old"], key=lambda x: x[1], reverse=True)
             for path, days in sorted_old[:5]:
                 print(f"   • {path} ({days}일 전)")
-            if len(self.issues['old']) > 5:
+            if len(self.issues["old"]) > 5:
                 print(f"   ... +{len(self.issues['old']) - 5}개 더")
             print()
 
         # Large documents
-        if self.issues['large']:
+        if self.issues["large"]:
             print(f"📏 큰 문서 (> 100KB): {len(self.issues['large'])}개")
-            sorted_large = sorted(self.issues['large'], key=lambda x: x[1], reverse=True)
+            sorted_large = sorted(self.issues["large"], key=lambda x: x[1], reverse=True)
             for path, size, lines in sorted_large[:5]:
-                print(f"   • {path} ({size/1024:.1f}KB, {lines}줄)")
-            if len(self.issues['large']) > 5:
+                print(f"   • {path} ({size / 1024:.1f}KB, {lines}줄)")
+            if len(self.issues["large"]) > 5:
                 print(f"   ... +{len(self.issues['large']) - 5}개 더")
             print()
 
         # No tags
-        if self.issues['no_tags']:
+        if self.issues["no_tags"]:
             print(f"🏷️  태그 없음: {len(self.issues['no_tags'])}개")
-            for path in self.issues['no_tags'][:5]:
+            for path in self.issues["no_tags"][:5]:
                 print(f"   • {path}")
-            if len(self.issues['no_tags']) > 5:
+            if len(self.issues["no_tags"]) > 5:
                 print(f"   ... +{len(self.issues['no_tags']) - 5}개 더")
             print()
 
         # TODOs
-        if self.issues['todos']:
-            total_todos = sum(count for _, count in self.issues['todos'])
+        if self.issues["todos"]:
+            total_todos = sum(count for _, count in self.issues["todos"])
             print(f"✅ 미완료 TODO: {total_todos}개 ({len(self.issues['todos'])}개 문서)")
-            sorted_todos = sorted(self.issues['todos'], key=lambda x: x[1], reverse=True)
+            sorted_todos = sorted(self.issues["todos"], key=lambda x: x[1], reverse=True)
             for path, count in sorted_todos[:5]:
                 print(f"   • {path} ({count}개)")
-            if len(self.issues['todos']) > 5:
+            if len(self.issues["todos"]) > 5:
                 print(f"   ... +{len(self.issues['todos']) - 5}개 더")
             print()
 
@@ -319,6 +311,7 @@ class HealthChecker:
         print("• 중복 이름은 구분 가능하도록 이름을 변경하세요")
         print("• 오래된 문서는 보관하거나 삭제하세요")
         print()
+
 
 def main():
     print("🏥 Obsidian Vault Health Check")
@@ -349,6 +342,7 @@ def main():
 
     # Print report
     checker.print_report()
+
 
 if __name__ == "__main__":
     main()

@@ -6,7 +6,6 @@ import sys
 import sqlite3
 from pathlib import Path
 
-import pytest
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -55,16 +54,19 @@ class TestDatabase:
         cursor = conn.cursor()
 
         # Insert a test document
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO document_index (file_path, file_name, title, content, tags)
             VALUES (?, ?, ?, ?, ?)
-        """, (
-            "/test/path/doc.md",
-            "doc.md",
-            "Test Document",
-            "This is test content for searching.",
-            "test,sample"
-        ))
+        """,
+            (
+                "/test/path/doc.md",
+                "doc.md",
+                "Test Document",
+                "This is test content for searching.",
+                "test,sample",
+            ),
+        )
         conn.commit()
 
         # Verify insert
@@ -82,21 +84,45 @@ class TestDatabase:
 
         # Insert documents
         docs = [
-            ("/path/python.md", "python.md", "Python Guide", "Learn Python programming language", "python,programming"),
-            ("/path/javascript.md", "javascript.md", "JavaScript Guide", "Learn JavaScript for web development", "javascript,web"),
-            ("/path/rust.md", "rust.md", "Rust Guide", "Learn Rust for system programming", "rust,systems"),
+            (
+                "/path/python.md",
+                "python.md",
+                "Python Guide",
+                "Learn Python programming language",
+                "python,programming",
+            ),
+            (
+                "/path/javascript.md",
+                "javascript.md",
+                "JavaScript Guide",
+                "Learn JavaScript for web development",
+                "javascript,web",
+            ),
+            (
+                "/path/rust.md",
+                "rust.md",
+                "Rust Guide",
+                "Learn Rust for system programming",
+                "rust,systems",
+            ),
         ]
 
         for doc in docs:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO document_index (file_path, file_name, title, content, tags)
                 VALUES (?, ?, ?, ?, ?)
-            """, doc)
+            """,
+                doc,
+            )
             # Also insert into FTS (contentless FTS requires manual sync)
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO document_fts (rowid, title, content, tags, aliases)
                 VALUES (last_insert_rowid(), ?, ?, ?, ?)
-            """, (doc[2], doc[3], doc[4], ""))
+            """,
+                (doc[2], doc[3], doc[4], ""),
+            )
         conn.commit()
 
         # Search for "programming"
@@ -120,24 +146,31 @@ class TestDatabase:
         cursor = conn.cursor()
 
         # Insert a recent document
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO recent_documents (file_path, title, access_count)
             VALUES (?, ?, ?)
-        """, ("/path/recent.md", "Recent Doc", 1))
+        """,
+            ("/path/recent.md", "Recent Doc", 1),
+        )
         conn.commit()
 
         # Update access count (simulate re-access)
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE recent_documents
             SET access_count = access_count + 1,
                 accessed_at = CURRENT_TIMESTAMP
             WHERE file_path = ?
-        """, ("/path/recent.md",))
+        """,
+            ("/path/recent.md",),
+        )
         conn.commit()
 
         # Verify count increased
-        cursor.execute("SELECT access_count FROM recent_documents WHERE file_path = ?",
-                       ("/path/recent.md",))
+        cursor.execute(
+            "SELECT access_count FROM recent_documents WHERE file_path = ?", ("/path/recent.md",)
+        )
         row = cursor.fetchone()
         assert row[0] == 2
 
@@ -183,7 +216,7 @@ class TestMarkdownParsing:
         import re
 
         # Simple title extraction
-        match = re.search(r'^#\s+(.+)$', sample_markdown_content, re.MULTILINE)
+        match = re.search(r"^#\s+(.+)$", sample_markdown_content, re.MULTILINE)
         assert match is not None
         assert match.group(1) == "Sample Document"
 
@@ -192,7 +225,7 @@ class TestMarkdownParsing:
         import re
 
         # Find hashtags in content
-        tags = re.findall(r'#(\w+)', sample_markdown_content)
+        tags = re.findall(r"#(\w+)", sample_markdown_content)
         assert "test" in tags
         assert "sample" in tags
 
@@ -201,7 +234,7 @@ class TestMarkdownParsing:
         import re
 
         # Find [[wikilinks]]
-        links = re.findall(r'\[\[([^\]]+)\]\]', sample_markdown_content)
+        links = re.findall(r"\[\[([^\]]+)\]\]", sample_markdown_content)
         assert "Related Document" in links
         assert "Another Note" in links
 
@@ -210,8 +243,8 @@ class TestMarkdownParsing:
         import re
 
         # Find incomplete todos
-        incomplete = re.findall(r'- \[ \] (.+)', sample_markdown_content)
-        complete = re.findall(r'- \[x\] (.+)', sample_markdown_content)
+        incomplete = re.findall(r"- \[ \] (.+)", sample_markdown_content)
+        complete = re.findall(r"- \[x\] (.+)", sample_markdown_content)
 
         assert len(incomplete) == 1
         assert len(complete) == 1
@@ -222,7 +255,7 @@ class TestMarkdownParsing:
         import re
 
         # Count all headings
-        headings = re.findall(r'^#+\s+.+$', sample_markdown_content, re.MULTILINE)
+        headings = re.findall(r"^#+\s+.+$", sample_markdown_content, re.MULTILINE)
         assert len(headings) >= 4  # Title + Introduction + Features + etc.
 
 

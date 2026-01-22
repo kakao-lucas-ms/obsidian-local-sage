@@ -4,7 +4,8 @@ Tests for the configuration system.
 
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+
+# from unittest.mock import patch, MagicMock
 
 import pytest
 import yaml
@@ -109,8 +110,6 @@ class TestConfig:
         config._config_path = None
         config.load(str(mock_config_file))
 
-        original_model = config.get("services.ollama.model")
-
         # Modify config file
         with open(mock_config_file, "r") as f:
             config_data = yaml.safe_load(f)
@@ -167,13 +166,7 @@ class TestConfigGet:
         from src.core.config import Config
 
         config = Config.__new__(Config)
-        config._config = {
-            "level1": {
-                "level2": {
-                    "level3": "deep_value"
-                }
-            }
-        }
+        config._config = {"level1": {"level2": {"level3": "deep_value"}}}
         config._config_path = None
 
         assert config.get("level1.level2.level3") == "deep_value"

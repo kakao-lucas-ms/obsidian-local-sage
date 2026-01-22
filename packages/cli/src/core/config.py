@@ -3,6 +3,7 @@
 Central configuration management for Obsidian Local Sage
 Loads settings from YAML and provides easy access to configuration values
 """
+
 import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -11,7 +12,7 @@ from typing import Dict, Any, Optional
 class Config:
     """Singleton configuration manager"""
 
-    _instance: Optional['Config'] = None
+    _instance: Optional["Config"] = None
     _config: Dict[str, Any] = {}
     _config_path: Optional[Path] = None
 
@@ -38,7 +39,7 @@ class Config:
                 # Development config
                 Path(__file__).parent.parent.parent / "config" / "settings.yaml",
                 # Legacy location (for migration)
-                Path.home() / ".config" / "obsidian-local-sage" / "settings.yaml"
+                Path.home() / ".config" / "obsidian-local-sage" / "settings.yaml",
             ]
 
             for loc in locations:
@@ -48,7 +49,7 @@ class Config:
 
         if config_path and Path(config_path).exists():
             self._config_path = Path(config_path)
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with open(config_path, "r", encoding="utf-8") as f:
                 self._config = yaml.safe_load(f) or {}
         else:
             raise FileNotFoundError(
@@ -72,7 +73,7 @@ class Config:
             >>> config.get('services.qdrant.port', 6333)
             6333
         """
-        keys = key.split('.')
+        keys = key.split(".")
         value = self._config
 
         for k in keys:
@@ -88,7 +89,7 @@ class Config:
     def reload(self) -> None:
         """Reload configuration from disk"""
         if self._config_path:
-            with open(self._config_path, 'r', encoding='utf-8') as f:
+            with open(self._config_path, "r", encoding="utf-8") as f:
                 self._config = yaml.safe_load(f) or {}
 
     # Convenience properties for commonly used paths
@@ -96,36 +97,36 @@ class Config:
     @property
     def vault_path(self) -> Path:
         """Get Obsidian vault path as Path object"""
-        path = self.get('vault.path', '~/Documents/Obsidian')
+        path = self.get("vault.path", "~/Documents/Obsidian")
         return Path(path).expanduser().resolve()
 
     @property
     def vault_name(self) -> str:
         """Get Obsidian vault name"""
-        return self.get('vault.name', self.vault_path.name)
+        return self.get("vault.name", self.vault_path.name)
 
     @property
     def db_path(self) -> Path:
         """Get database path as Path object"""
-        path = self.get('project.db_path', '~/.obsidian-local-sage/db/automation.db')
+        path = self.get("project.db_path", "~/.obsidian-local-sage/db/automation.db")
         return Path(path).expanduser().resolve()
 
     @property
     def project_root(self) -> Path:
         """Get project root directory as Path object"""
-        path = self.get('project.root', '~/.obsidian-local-sage')
+        path = self.get("project.root", "~/.obsidian-local-sage")
         return Path(path).expanduser().resolve()
 
     @property
     def search_results_dir(self) -> Path:
         """Get search results directory (relative to vault)"""
-        dir_name = self.get('project.search_results_dir', '검색결과')
+        dir_name = self.get("project.search_results_dir", "검색결과")
         return self.vault_path / dir_name
 
     @property
     def log_path(self) -> Path:
         """Get log directory path"""
-        path = self.get('advanced.log_path', '~/.obsidian-local-sage/logs')
+        path = self.get("advanced.log_path", "~/.obsidian-local-sage/logs")
         log_dir = Path(path).expanduser().resolve()
         log_dir.mkdir(parents=True, exist_ok=True)
         return log_dir
@@ -135,34 +136,34 @@ class Config:
     @property
     def ollama_api_base(self) -> str:
         """Get Ollama API base URL"""
-        return self.get('services.ollama.api_base', 'http://127.0.0.1:11434')
+        return self.get("services.ollama.api_base", "http://127.0.0.1:11434")
 
     @property
     def ollama_model(self) -> str:
         """Get Ollama model name"""
-        return self.get('services.ollama.model', 'bge-m3')
+        return self.get("services.ollama.model", "bge-m3")
 
     @property
     def qdrant_host(self) -> str:
         """Get Qdrant host"""
-        return self.get('services.qdrant.host', '127.0.0.1')
+        return self.get("services.qdrant.host", "127.0.0.1")
 
     @property
     def qdrant_port(self) -> int:
         """Get Qdrant port"""
-        return self.get('services.qdrant.port', 6333)
+        return self.get("services.qdrant.port", 6333)
 
     @property
     def qdrant_collection(self) -> str:
         """Get Qdrant collection name"""
-        return self.get('services.qdrant.collection', 'obsidian_docs')
+        return self.get("services.qdrant.collection", "obsidian_docs")
 
     # Feature flags
 
     @property
     def debug(self) -> bool:
         """Check if debug mode is enabled"""
-        return self.get('advanced.debug', False)
+        return self.get("advanced.debug", False)
 
     def __repr__(self) -> str:
         return f"Config(vault={self.vault_path}, db={self.db_path})"
@@ -195,11 +196,11 @@ except FileNotFoundError:
     pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Test configuration loading
     try:
         config.load()
-        print(f"✅ Config loaded successfully")
+        print("✅ Config loaded successfully")
         print(f"Vault: {config.vault_path}")
         print(f"Database: {config.db_path}")
         print(f"Ollama: {config.ollama_api_base}")

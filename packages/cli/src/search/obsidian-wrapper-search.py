@@ -5,8 +5,6 @@ Returns top search results in clean text format
 """
 
 import sys
-import os
-import json
 from pathlib import Path
 import pickle
 import requests
@@ -19,7 +17,7 @@ from src.core.config import config
 
 # Try to import rank_bm25, handle if not installed
 try:
-    from rank_bm25 import BM25Okapi
+
     HAS_BM25 = True
 except ImportError:
     HAS_BM25 = False
@@ -35,22 +33,22 @@ VAULT_PATH = str(config.vault_path)
 
 # Search weights from config
 RRF_K = 60
-VECTOR_WEIGHT = config.get('features.search.vector_weight', 0.6)
-BM25_WEIGHT = config.get('features.search.fts_weight', 0.4)
+VECTOR_WEIGHT = config.get("features.search.vector_weight", 0.6)
+BM25_WEIGHT = config.get("features.search.fts_weight", 0.4)
+
 
 def get_embedding(text):
     """Get embedding from Ollama"""
     try:
         response = requests.post(
-            OLLAMA_URL,
-            json={"model": EMBEDDING_MODEL, "prompt": text},
-            timeout=30
+            OLLAMA_URL, json={"model": EMBEDDING_MODEL, "prompt": text}, timeout=30
         )
         response.raise_for_status()
         return response.json()["embedding"]
     except Exception as e:
         print(f"❌ Embedding error: {e}", file=sys.stderr)
         return None
+
 
 def vector_search(query, limit=10):
     """Search using Qdrant vector database"""
@@ -61,12 +59,8 @@ def vector_search(query, limit=10):
     try:
         response = requests.post(
             f"{QDRANT_URL}/collections/{COLLECTION_NAME}/points/search",
-            json={
-                "vector": embedding,
-                "limit": limit,
-                "with_payload": True
-            },
-            timeout=10
+            json={"vector": embedding, "limit": limit, "with_payload": True},
+            timeout=10,
         )
         response.raise_for_status()
         results = response.json()["result"]
@@ -75,17 +69,20 @@ def vector_search(query, limit=10):
         formatted = []
         for i, r in enumerate(results):
             payload = r.get("payload", {})
-            formatted.append({
-                "file_path": payload.get("file_path", ""),
-                "title": payload.get("title", "Unknown"),
-                "content": payload.get("chunk", ""),
-                "score": r.get("score", 0),
-                "rank": i + 1
-            })
+            formatted.append(
+                {
+                    "file_path": payload.get("file_path", ""),
+                    "title": payload.get("title", "Unknown"),
+                    "content": payload.get("chunk", ""),
+                    "score": r.get("score", 0),
+                    "rank": i + 1,
+                }
+            )
         return formatted
     except Exception as e:
         print(f"❌ Vector search error: {e}", file=sys.stderr)
         return []
+
 
 def bm25_search(query, limit=10):
     """Search using BM25 keyword search"""
@@ -115,17 +112,20 @@ def bm25_search(query, limit=10):
         formatted = []
         for rank, idx in enumerate(top_indices):
             doc = docs[idx]
-            formatted.append({
-                "file_path": doc.get("file_path", ""),
-                "title": doc.get("title", "Unknown"),
-                "content": doc.get("content", ""),
-                "score": scores[idx],
-                "rank": rank + 1
-            })
+            formatted.append(
+                {
+                    "file_path": doc.get("file_path", ""),
+                    "title": doc.get("title", "Unknown"),
+                    "content": doc.get("content", ""),
+                    "score": scores[idx],
+                    "rank": rank + 1,
+                }
+            )
         return formatted
     except Exception as e:
         print(f"❌ BM25 search error: {e}", file=sys.stderr)
         return []
+
 
 def rrf_fusion(vector_results, bm25_results):
     """Reciprocal Rank Fusion to combine results"""
@@ -160,6 +160,7 @@ def rrf_fusion(vector_results, bm25_results):
 
     return final
 
+
 def format_result(result, index):
     """Format a single result for display"""
     title = result.get("title", "Unknown")
@@ -169,10 +170,11 @@ def format_result(result, index):
     # Get relative path from vault
     try:
         rel_path = Path(file_path).relative_to(VAULT_PATH)
-    except:
+    except Exception:
         rel_path = Path(file_path).name
 
     return f"{index}. {title}\n   📂 {rel_path}\n   {content}...\n"
+
 
 def main():
     if len(sys.argv) < 2:
@@ -202,6 +204,7 @@ def main():
     print(f"Found {len(final_results)} results:\n")
     for i, result in enumerate(final_results, 1):
         print(format_result(result, i))
+
 
 if __name__ == "__main__":
     main()

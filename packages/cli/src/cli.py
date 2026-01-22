@@ -70,14 +70,10 @@ Examples:
   obsidian-sage ingest --full                Rebuild entire index
   obsidian-sage health                       Run vault health check
   obsidian-sage config                       Show current configuration
-        """
+        """,
     )
 
-    parser.add_argument(
-        "--version", "-v",
-        action="version",
-        version="%(prog)s 0.1.0"
-    )
+    parser.add_argument("--version", "-v", action="version", version="%(prog)s 0.1.0")
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
@@ -85,7 +81,9 @@ Examples:
     search_parser = subparsers.add_parser("search", help="AI-powered semantic search")
     search_parser.add_argument("query", nargs="?", help="Search query")
     search_parser.add_argument("--limit", "-l", type=int, default=8, help="Max results")
-    search_parser.add_argument("--no-create-note", action="store_true", help="Don't create result note")
+    search_parser.add_argument(
+        "--no-create-note", action="store_true", help="Don't create result note"
+    )
 
     # Jump command
     jump_parser = subparsers.add_parser("jump", help="Interactive document jump")
@@ -112,8 +110,11 @@ Examples:
 
     # Batch command
     batch_parser = subparsers.add_parser("batch", help="Batch operations")
-    batch_parser.add_argument("operation", choices=["summary", "moc", "add-tag", "check-links"],
-                              help="Batch operation type")
+    batch_parser.add_argument(
+        "operation",
+        choices=["summary", "moc", "add-tag", "check-links"],
+        help="Batch operation type",
+    )
     batch_parser.add_argument("folder", help="Target folder path")
     batch_parser.add_argument("--tag", help="Tag to add (for add-tag)")
     batch_parser.add_argument("--title", help="Title (for moc)")
@@ -236,7 +237,9 @@ def compare(file1: str, file2: str) -> int:
     return run_python_script(script_path, args)
 
 
-def batch(operation: str, folder: str, tag: Optional[str] = None, title: Optional[str] = None) -> int:
+def batch(
+    operation: str, folder: str, tag: Optional[str] = None, title: Optional[str] = None
+) -> int:
     """
     Run batch operations on a folder.
     """
@@ -269,16 +272,18 @@ def show_config(path_only: bool = False) -> int:
         print("Obsidian Local Sage Configuration")
         print("=" * 60)
         print(f"\nConfig file: {config._config_path or 'Not loaded'}")
-        print(f"\nVault:")
+        print("\nVault:")
         print(f"  Path: {config.vault_path}")
         print(f"  Name: {config.vault_name}")
-        print(f"\nProject:")
+        print("\nProject:")
         print(f"  Root: {config.project_root}")
         print(f"  Database: {config.db_path}")
         print(f"  Logs: {config.log_path}")
-        print(f"\nServices:")
+        print("\nServices:")
         print(f"  Ollama: {config.ollama_api_base} (model: {config.ollama_model})")
-        print(f"  Qdrant: {config.qdrant_host}:{config.qdrant_port} (collection: {config.qdrant_collection})")
+        print(
+            f"  Qdrant: {config.qdrant_host}:{config.qdrant_port} (collection: {config.qdrant_collection})"
+        )
         print(f"\nDebug: {config.debug}")
         print("")
 
@@ -291,6 +296,7 @@ def show_config(path_only: bool = False) -> int:
 
 # CLI entry points for pyproject.toml
 
+
 def cli_main() -> None:
     """Entry point for obsidian-sage command."""
     sys.exit(main())
@@ -299,8 +305,7 @@ def cli_main() -> None:
 def cli_search() -> None:
     """Entry point for sage-search command."""
     parser = argparse.ArgumentParser(
-        prog="sage-search",
-        description="AI-powered semantic search for Obsidian"
+        prog="sage-search", description="AI-powered semantic search for Obsidian"
     )
     parser.add_argument("query", nargs="?", help="Search query")
     parser.add_argument("--limit", "-l", type=int, default=8, help="Max results")
@@ -312,8 +317,7 @@ def cli_search() -> None:
 def cli_jump() -> None:
     """Entry point for sage-jump command."""
     parser = argparse.ArgumentParser(
-        prog="sage-jump",
-        description="Interactive document jump with fuzzy search"
+        prog="sage-jump", description="Interactive document jump with fuzzy search"
     )
     parser.add_argument("query", nargs="?", help="Initial search query")
 
@@ -324,8 +328,7 @@ def cli_jump() -> None:
 def cli_ingest() -> None:
     """Entry point for sage-ingest command."""
     parser = argparse.ArgumentParser(
-        prog="sage-ingest",
-        description="Build or update the search index"
+        prog="sage-ingest", description="Build or update the search index"
     )
     parser.add_argument("--full", action="store_true", help="Full rebuild")
     parser.add_argument("--incremental", action="store_true", help="Incremental update")
@@ -336,10 +339,7 @@ def cli_ingest() -> None:
 
 def cli_health() -> None:
     """Entry point for sage-health command."""
-    parser = argparse.ArgumentParser(
-        prog="sage-health",
-        description="Vault health check"
-    )
+    parser = argparse.ArgumentParser(prog="sage-health", description="Vault health check")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
 
     args = parser.parse_args()

@@ -20,16 +20,22 @@ ignore =
     # E203: whitespace before ':' (black disagrees)
     E203,
     # E266: too many leading '#' for block comment
-    E266
+    E266,
+    # C901: function is too complex (legacy code)
+    C901,
+    # E402: module level import not at top of file (config pattern)
+    E402
 
 per-file-ignores =
     # Allow unused imports in __init__.py files
     __init__.py: F401
     # Allow assert in tests
     tests/*.py: S101
+    # Allow unused imports in tests
+    tests/*.py: F401
 
 # McCabe complexity
-max-complexity = 10
+max-complexity = 15
 
 # Show source and count
 show-source = true

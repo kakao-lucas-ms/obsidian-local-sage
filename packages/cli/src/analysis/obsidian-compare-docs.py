@@ -14,62 +14,64 @@ import re
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/embeddings"
 
+
 def read_document(file_path):
     """Read document content"""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             return f.read()
-    except Exception as e:
+    except Exception:
         return None
+
 
 def extract_metadata(content):
     """Extract metadata from document"""
-    lines = content.split('\n')
+    lines = content.split("\n")
 
     # Title (first h1)
     title = None
     for line in lines:
-        if line.startswith('# '):
+        if line.startswith("# "):
             title = line[2:].strip()
             break
 
     # Headings
     headings = []
     for line in lines:
-        if line.startswith('##'):
-            h = line.lstrip('#').strip()
+        if line.startswith("##"):
+            h = line.lstrip("#").strip()
             if h:
                 headings.append(h)
 
     # Tags
-    tags = re.findall(r'#(\w+)', content)
+    tags = re.findall(r"#(\w+)", content)
 
     # Links
-    links = re.findall(r'\[\[([^\]]+)\]\]', content)
+    links = re.findall(r"\[\[([^\]]+)\]\]", content)
 
     # Word count
     words = len(content.split())
 
     return {
-        'title': title or 'Untitled',
-        'headings': headings,
-        'tags': list(set(tags)),
-        'links': list(set(links)),
-        'word_count': words,
-        'lines': len(lines)
+        "title": title or "Untitled",
+        "headings": headings,
+        "tags": list(set(tags)),
+        "links": list(set(links)),
+        "word_count": words,
+        "lines": len(lines),
     }
+
 
 def get_embedding(text):
     """Get embedding for text"""
     try:
         response = requests.post(
-            OLLAMA_URL,
-            json={"model": "bge-m3", "prompt": text[:2000]},  # Limit length
-            timeout=30
+            OLLAMA_URL, json={"model": "bge-m3", "prompt": text[:2000]}, timeout=30  # Limit length
         )
         return response.json()["embedding"]
-    except Exception as e:
+    except Exception:
         return None
+
 
 def cosine_similarity(vec1, vec2):
     """Calculate cosine similarity"""
@@ -85,14 +87,46 @@ def cosine_similarity(vec1, vec2):
 
     return dot_product / (magnitude1 * magnitude2)
 
+
 def extract_key_phrases(content):
     """Extract key phrases (simple word frequency)"""
     # Remove markdown syntax
-    text = re.sub(r'[#*`\[\]()]', '', content)
+    text = re.sub(r"[#*`\[\]()]", "", content)
     words = text.lower().split()
 
     # Filter stop words (simple)
-    stop_words = {'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been', 'being', '이', '그', '저', '것', '수', '등', '및'}
+    stop_words = {
+        "a",
+        "an",
+        "the",
+        "and",
+        "or",
+        "but",
+        "in",
+        "on",
+        "at",
+        "to",
+        "for",
+        "of",
+        "with",
+        "by",
+        "from",
+        "as",
+        "is",
+        "was",
+        "are",
+        "were",
+        "be",
+        "been",
+        "being",
+        "이",
+        "그",
+        "저",
+        "것",
+        "수",
+        "등",
+        "및",
+    }
 
     filtered = [w for w in words if len(w) > 2 and w not in stop_words]
 
@@ -100,10 +134,11 @@ def extract_key_phrases(content):
     counter = Counter(filtered)
     return counter.most_common(15)
 
+
 def compare_content(content1, content2):
     """Compare content using difflib"""
-    lines1 = content1.split('\n')
-    lines2 = content2.split('\n')
+    lines1 = content1.split("\n")
+    lines2 = content2.split("\n")
 
     matcher = difflib.SequenceMatcher(None, lines1, lines2)
     ratio = matcher.ratio()
@@ -112,13 +147,14 @@ def compare_content(content1, content2):
     common = []
     for block in matcher.get_matching_blocks():
         if block.size > 0:
-            common.extend(lines1[block.a:block.a + block.size])
+            common.extend(lines1[block.a : block.a + block.size])
 
     return {
-        'similarity_ratio': ratio,
-        'common_lines': len(common),
-        'total_lines': max(len(lines1), len(lines2))
+        "similarity_ratio": ratio,
+        "common_lines": len(common),
+        "total_lines": max(len(lines1), len(lines2)),
     }
+
 
 def main():
     if len(sys.argv) < 3:
@@ -131,10 +167,10 @@ def main():
 
     # Unescape paths if needed
     for i, f in enumerate([file1, file2]):
-        if '\\/' in f:
-            f = f.replace('\\/', '/')
-            f = f.replace('\\-', '-')
-            f = f.replace('\\ ', ' ')
+        if "\\/" in f:
+            f = f.replace("\\/", "/")
+            f = f.replace("\\-", "-")
+            f = f.replace("\\ ", " ")
             if i == 0:
                 file1 = f
             else:
@@ -167,12 +203,16 @@ def main():
 
     print(f"📄 문서 1: {meta1['title']}")
     print(f"   단어: {meta1['word_count']}, 줄: {meta1['lines']}")
-    print(f"   헤딩: {len(meta1['headings'])}, 태그: {len(meta1['tags'])}, 링크: {len(meta1['links'])}")
+    print(
+        f"   헤딩: {len(meta1['headings'])}, 태그: {len(meta1['tags'])}, 링크: {len(meta1['links'])}"
+    )
     print()
 
     print(f"📄 문서 2: {meta2['title']}")
     print(f"   단어: {meta2['word_count']}, 줄: {meta2['lines']}")
-    print(f"   헤딩: {len(meta2['headings'])}, 태그: {len(meta2['tags'])}, 링크: {len(meta2['links'])}")
+    print(
+        f"   헤딩: {len(meta2['headings'])}, 태그: {len(meta2['tags'])}, 링크: {len(meta2['links'])}"
+    )
     print()
     print("=" * 60)
 
@@ -208,7 +248,7 @@ def main():
     # Shared tags
     print()
     print("🏷️  공통 태그:")
-    common_tags = set(meta1['tags']) & set(meta2['tags'])
+    common_tags = set(meta1["tags"]) & set(meta2["tags"])
     if common_tags:
         print(f"   {', '.join('#' + t for t in common_tags)}")
     else:
@@ -217,7 +257,7 @@ def main():
     # Shared links
     print()
     print("🔗 공통 링크:")
-    common_links = set(meta1['links']) & set(meta2['links'])
+    common_links = set(meta1["links"]) & set(meta2["links"])
     if common_links:
         for link in list(common_links)[:5]:
             print(f"   • [[{link}]]")
@@ -280,6 +320,7 @@ def main():
         print(f"• 공통 태그 {len(common_tags)}개로 연결되어 있습니다")
 
     print()
+
 
 if __name__ == "__main__":
     main()

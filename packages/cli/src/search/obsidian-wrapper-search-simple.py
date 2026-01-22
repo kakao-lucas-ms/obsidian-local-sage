@@ -7,6 +7,7 @@ Very simple output for testing
 import sys
 import os
 
+
 def main():
     # Check if query provided
     if len(sys.argv) < 2:
@@ -43,6 +44,7 @@ def main():
         print(f"❌ Error: {e}")
 
     print("\n(This is a test version)")
+
 
 if __name__ == "__main__":
     main()

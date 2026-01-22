@@ -13,6 +13,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.core.config import config
 
+
 # Unescape backslashes from Obsidian
 def unescape_text(text):
     """Remove backslash escaping added by Obsidian"""
@@ -20,7 +21,7 @@ def unescape_text(text):
     result = ""
     i = 0
     while i < len(text):
-        if text[i] == '\\' and i + 1 < len(text):
+        if text[i] == "\\" and i + 1 < len(text):
             # Skip the backslash, keep the next char
             result += text[i + 1]
             i += 2
@@ -28,6 +29,7 @@ def unescape_text(text):
             result += text[i]
             i += 1
     return result
+
 
 def main():
     if len(sys.argv) < 2:
@@ -53,16 +55,14 @@ def main():
         emb_response = requests.post(
             f"{config.ollama_api_base}/api/embeddings",
             json={"model": config.ollama_model, "prompt": query},
-            timeout=30
+            timeout=30,
         )
         embedding = emb_response.json()["embedding"]
 
         # Search
         qdrant_url = f"http://{config.qdrant_host}:{config.qdrant_port}/collections/{config.qdrant_collection}/points/search"
         search_response = requests.post(
-            qdrant_url,
-            json={"vector": embedding, "limit": 5, "with_payload": True},
-            timeout=10
+            qdrant_url, json={"vector": embedding, "limit": 5, "with_payload": True}, timeout=10
         )
         results = search_response.json()["result"]
 
@@ -81,7 +81,7 @@ def main():
             # Get relative path
             try:
                 rel_path = Path(file_path).relative_to(config.vault_path)
-            except:
+            except Exception:
                 rel_path = Path(file_path).name
 
             print(f"{i}. {title}")
@@ -93,7 +93,9 @@ def main():
     except Exception as e:
         print(f"❌ 오류: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     main()

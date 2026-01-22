@@ -20,17 +20,21 @@ DB_PATH = str(config.db_path)
 VAULT_PATH = str(config.vault_path)
 SEARCH_RESULTS_DIR = config.search_results_dir
 
+
 def get_title_from_db(file_path):
     """Get actual title from SQLite database"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT title FROM document_index
             WHERE file_path = ?
             LIMIT 1
-        """, (file_path,))
+        """,
+            (file_path,),
+        )
 
         result = cursor.fetchone()
         conn.close()
@@ -40,8 +44,9 @@ def get_title_from_db(file_path):
 
         return Path(file_path).stem
 
-    except Exception as e:
+    except Exception:
         return Path(file_path).stem
+
 
 def create_search_results_note(query, results):
     """Create a note with search results and clickable links"""
@@ -76,11 +81,11 @@ def create_search_results_note(query, results):
             rel_path = Path(file_path).relative_to(VAULT_PATH)
             # Remove .md extension for wikilink
             wikilink = str(rel_path).replace(".md", "")
-        except:
+        except Exception:
             wikilink = Path(file_path).stem
 
         # Clean chunk
-        clean_chunk = chunk.replace('\n', ' ').strip()
+        clean_chunk = chunk.replace("\n", " ").strip()
         if len(clean_chunk) > 200:
             clean_chunk = clean_chunk[:200] + "..."
 
@@ -97,10 +102,11 @@ def create_search_results_note(query, results):
 """
 
     # Write note
-    with open(note_path, 'w', encoding='utf-8') as f:
+    with open(note_path, "w", encoding="utf-8") as f:
         f.write(content)
 
     return note_path
+
 
 def main():
     if len(sys.argv) < 2:
@@ -123,16 +129,14 @@ def main():
         emb_response = requests.post(
             f"{config.ollama_api_base}/api/embeddings",
             json={"model": config.ollama_model, "prompt": query},
-            timeout=30
+            timeout=30,
         )
         embedding = emb_response.json()["embedding"]
 
         # Search Qdrant
         qdrant_url = f"http://{config.qdrant_host}:{config.qdrant_port}/collections/{config.qdrant_collection}/points/search"
         search_response = requests.post(
-            qdrant_url,
-            json={"vector": embedding, "limit": 10, "with_payload": True},
-            timeout=10
+            qdrant_url, json={"vector": embedding, "limit": 10, "with_payload": True}, timeout=10
         )
         results = search_response.json()["result"]
 
@@ -148,6 +152,7 @@ def main():
 
         # URL encode
         import urllib.parse
+
         encoded = urllib.parse.quote(str(rel_path))
         vault_encoded = urllib.parse.quote(config.vault_name)
 
@@ -155,9 +160,9 @@ def main():
 
         # Print success message
         print(f"✅ {len(results)}개 결과를 찾았습니다!")
-        print(f"📝 검색 결과 노트를 생성했습니다")
+        print("📝 검색 결과 노트를 생성했습니다")
         print(f"\n{note_path.name}")
-        print(f"\n💡 노트에서 [[링크]]를 클릭하면 해당 문서로 이동합니다")
+        print("\n💡 노트에서 [[링크]]를 클릭하면 해당 문서로 이동합니다")
 
         # Open the note
         os.system(f"open '{uri}'")
@@ -165,7 +170,9 @@ def main():
     except Exception as e:
         print(f"❌ 오류: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     main()

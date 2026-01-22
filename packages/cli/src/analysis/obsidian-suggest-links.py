@@ -23,52 +23,58 @@ VAULT_PATH = str(config.vault_path)
 OLLAMA_URL = f"{config.ollama_api_base}/api/embeddings"
 QDRANT_URL = f"http://{config.qdrant_host}:{config.qdrant_port}/collections/{config.qdrant_collection}/points/search"
 
+
 def get_document_info(file_path):
     """Get document metadata from SQLite"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT title, category, tags, aliases
             FROM document_index
             WHERE file_path = ?
             LIMIT 1
-        """, (file_path,))
+        """,
+            (file_path,),
+        )
 
         result = cursor.fetchone()
         conn.close()
 
         if result:
             return {
-                'title': result[0] or Path(file_path).stem,
-                'category': result[1],
-                'tags': result[2],
-                'aliases': result[3]
+                "title": result[0] or Path(file_path).stem,
+                "category": result[1],
+                "tags": result[2],
+                "aliases": result[3],
             }
         return None
-    except Exception as e:
+    except Exception:
         return None
+
 
 def extract_key_phrases(file_path):
     """Extract key phrases from document for search"""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
 
         # Extract first paragraph (usually most important)
-        lines = [l.strip() for l in content.split('\n') if l.strip() and not l.startswith('#')]
+        lines = [line.strip() for line in content.split("\n") if line.strip() and not line.startswith("#")]
         first_para = lines[0] if lines else ""
 
         # Extract headings
-        headings = [l.strip('#').strip() for l in content.split('\n') if l.startswith('##')]
+        headings = [line.strip("#").strip() for line in content.split("\n") if line.startswith("##")]
 
         # Combine for context
         context = f"{first_para} {' '.join(headings[:3])}"
         return context[:500]  # Limit length
 
-    except Exception as e:
+    except Exception:
         return ""
+
 
 def find_similar_documents(file_path, limit=10):
     """Find semantically similar documents"""
@@ -82,7 +88,7 @@ def find_similar_documents(file_path, limit=10):
         emb_response = requests.post(
             OLLAMA_URL,
             json={"model": config.ollama_model, "prompt": context},
-            timeout=config.get('services.ollama.timeout', 30)
+            timeout=config.get("services.ollama.timeout", 30),
         )
         embedding = emb_response.json()["embedding"]
 
@@ -92,9 +98,9 @@ def find_similar_documents(file_path, limit=10):
             json={
                 "vector": embedding,
                 "limit": limit + 5,  # Get extra to filter out current doc
-                "with_payload": True
+                "with_payload": True,
             },
-            timeout=10
+            timeout=10,
         )
         results = search_response.json()["result"]
 
@@ -115,6 +121,7 @@ def find_similar_documents(file_path, limit=10):
         print(f"⚠️  Error finding similar documents: {e}")
         return []
 
+
 def group_by_document(results):
     """Group chunks by document"""
     docs = defaultdict(lambda: {"score": 0, "chunks": [], "path": ""})
@@ -134,14 +141,16 @@ def group_by_document(results):
     sorted_docs = sorted(docs.items(), key=lambda x: x[1]["score"], reverse=True)
     return sorted_docs
 
+
 def get_wikilink(file_path, title):
     """Generate wikilink for a document"""
     try:
         rel_path = Path(file_path).relative_to(VAULT_PATH)
         wikilink_path = str(rel_path).replace(".md", "")
         return f"[[{wikilink_path}|{title}]]"
-    except:
+    except Exception:
         return f"[[{Path(file_path).stem}|{title}]]"
+
 
 def main():
     if len(sys.argv) < 2:
@@ -152,10 +161,10 @@ def main():
     file_path = " ".join(sys.argv[1:])
 
     # Unescape if needed
-    if '\\/' in file_path:
-        file_path = file_path.replace('\\/', '/')
-        file_path = file_path.replace('\\-', '-')
-        file_path = file_path.replace('\\ ', ' ')
+    if "\\/" in file_path:
+        file_path = file_path.replace("\\/", "/")
+        file_path = file_path.replace("\\-", "-")
+        file_path = file_path.replace("\\ ", " ")
 
     if not os.path.exists(file_path):
         print(f"❌ 파일을 찾을 수 없습니다: {file_path}")
@@ -164,7 +173,7 @@ def main():
     # Get document info
     doc_info = get_document_info(file_path)
     if not doc_info:
-        doc_info = {'title': Path(file_path).stem}
+        doc_info = {"title": Path(file_path).stem}
 
     print(f"🔗 링크 제안: {doc_info['title']}")
     print()
@@ -190,10 +199,10 @@ def main():
     for i, (doc_path, data) in enumerate(grouped[:8], 1):
         # Get title from DB
         info = get_document_info(doc_path)
-        title = info['title'] if info else Path(doc_path).stem
+        title = info["title"] if info else Path(doc_path).stem
 
-        score = data['score']
-        chunks = data['chunks']
+        score = data["score"]
+        chunks = data["chunks"]
 
         # Generate wikilink
         wikilink = get_wikilink(doc_path, title)
@@ -205,7 +214,7 @@ def main():
 
         # Show snippet
         if chunks:
-            snippet = chunks[0].replace('\n', ' ').strip()
+            snippet = chunks[0].replace("\n", " ").strip()
             if len(snippet) > 100:
                 snippet = snippet[:100] + "..."
             print(f"   내용: {snippet}")
@@ -216,6 +225,7 @@ def main():
     print()
     print("💡 위 링크를 복사해서 문서에 추가하세요")
     print("   예: '이 내용은 [[다른문서|다른 문서]]와 관련이 있습니다'")
+
 
 if __name__ == "__main__":
     main()

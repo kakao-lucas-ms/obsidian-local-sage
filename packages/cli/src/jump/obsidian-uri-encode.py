@@ -3,6 +3,7 @@
 Encode file path for Obsidian URI
 Converts absolute path to vault-relative path and URL encodes it
 """
+
 import sys
 from pathlib import Path
 from urllib.parse import quote
@@ -21,10 +22,10 @@ try:
     rel_path = abs_path.relative_to(vault)
 
     # Convert to string and encode (keep slashes)
-    encoded = quote(str(rel_path), safe='/')
-    print(encoded, end='')  # No newline
-except Exception as e:
+    encoded = quote(str(rel_path), safe="/")
+    print(encoded, end="")  # No newline
+except Exception:
     # Fallback: just encode as-is
-    encoded = quote(file_path, safe='/')
-    print(encoded, end='')
+    encoded = quote(file_path, safe="/")
+    print(encoded, end="")
     sys.exit(0)
