@@ -252,3 +252,171 @@
   color: var(--text-muted);
   text-align: center;
 }
+
+/* Health Check Modal */
+.sage-ai-health-modal {
+  padding: 20px;
+  max-width: 800px;
+  width: 100%;
+}
+
+.sage-ai-health-status {
+  padding: 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  margin-bottom: 16px;
+  color: var(--text-normal);
+}
+
+.sage-ai-progress-container {
+  width: 100%;
+  height: 8px;
+  background: var(--background-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.sage-ai-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--interactive-accent), var(--interactive-accent-hover));
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.sage-ai-health-results {
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.sage-ai-health-success {
+  text-align: center;
+  padding: 40px 20px;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  border: 2px solid var(--interactive-success);
+}
+
+.sage-ai-health-success h3 {
+  margin: 0 0 12px 0;
+  color: var(--interactive-success);
+  font-size: 20px;
+}
+
+.sage-ai-health-success p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.sage-ai-health-summary {
+  padding: 16px;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border-left: 4px solid var(--interactive-accent);
+}
+
+.sage-ai-health-summary h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: var(--text-normal);
+}
+
+.sage-ai-health-summary p {
+  margin: 4px 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.sage-ai-health-section {
+  margin-bottom: 20px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.sage-ai-health-section-header {
+  padding: 12px 16px;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.sage-ai-health-section-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.sage-ai-health-issue-list {
+  padding: 8px;
+}
+
+.sage-ai-health-issue-item {
+  padding: 12px;
+  margin: 4px 0;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sage-ai-health-issue-item:hover {
+  background: var(--background-secondary);
+  border-color: var(--interactive-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.sage-ai-health-issue-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-normal);
+  margin-bottom: 4px;
+  font-family: var(--font-monospace);
+}
+
+.sage-ai-health-issue-details {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.sage-ai-health-issue-more {
+  padding: 8px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.sage-ai-health-suggestions {
+  margin-top: 20px;
+  padding: 16px;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  border-left: 4px solid var(--text-warning);
+}
+
+.sage-ai-health-suggestions h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: var(--text-normal);
+}
+
+.sage-ai-health-suggestions ul {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+}
+
+.sage-ai-health-suggestions li {
+  margin: 6px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}

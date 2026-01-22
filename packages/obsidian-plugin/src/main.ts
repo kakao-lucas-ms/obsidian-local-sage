@@ -3,10 +3,12 @@ import { OllamaService } from './services/ollama';
 import { QdrantService } from './services/qdrant';
 import { DocumentIndexer } from './services/indexer';
 import { LinkSuggestionService } from './services/linkSuggestion';
+import { HealthCheckService } from './services/healthCheck';
 import { SearchModal } from './ui/SearchModal';
 import { JumpModal } from './ui/JumpModal';
 import { IndexModal } from './ui/IndexModal';
 import { LinkSuggestionModal } from './ui/LinkSuggestionModal';
+import { HealthCheckModal } from './ui/HealthCheckModal';
 
 interface SageAISettings {
   ollamaUrl: string;
@@ -32,6 +34,7 @@ export default class SageAIPlugin extends Plugin {
   private qdrant: QdrantService;
   private indexer: DocumentIndexer;
   private linkSuggestion: LinkSuggestionService;
+  private healthCheck: HealthCheckService;
 
   async onload() {
     await this.loadSettings();
@@ -78,6 +81,15 @@ export default class SageAIPlugin extends Plugin {
       },
     });
 
+    // Add command: Vault Health Check
+    this.addCommand({
+      id: 'sage-ai-health-check',
+      name: 'Vault Health Check',
+      callback: () => {
+        new HealthCheckModal(this.app, this.healthCheck).open();
+      },
+    });
+
     // Add command: Check Status
     this.addCommand({
       id: 'sage-ai-status',
@@ -114,6 +126,8 @@ export default class SageAIPlugin extends Plugin {
       this.ollama,
       this.qdrant
     );
+
+    this.healthCheck = new HealthCheckService(this.app.vault);
   }
 
   private async openSearchModal() {

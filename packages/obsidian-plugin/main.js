@@ -27,7 +27,7 @@ __export(main_exports, {
   default: () => SageAIPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian8 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 
 // src/services/ollama.ts
 var import_obsidian = require("obsidian");
@@ -615,6 +615,214 @@ var LinkSuggestionService = class {
   }
 };
 
+// src/services/healthCheck.ts
+var HealthCheckService = class {
+  constructor(vault) {
+    this.vault = vault;
+  }
+  /**
+   * Run full health check on vault
+   */
+  async runHealthCheck(onProgress) {
+    const files = this.vault.getMarkdownFiles();
+    const totalChecks = 8;
+    let currentCheck = 0;
+    const result = {
+      totalFiles: files.length,
+      totalIssues: 0,
+      issues: {
+        empty: [],
+        nearly_empty: [],
+        orphaned: [],
+        broken_links: [],
+        duplicates: [],
+        old: [],
+        large: [],
+        no_tags: [],
+        todos: []
+      }
+    };
+    onProgress == null ? void 0 : onProgress(++currentCheck, totalChecks, "Checking empty documents...");
+    await this.checkEmptyDocuments(files, result);
+    onProgress == null ? void 0 : onProgress(++currentCheck, totalChecks, "Checking orphaned documents...");
+    await this.checkOrphanedDocuments(files, result);
+    onProgress == null ? void 0 : onProgress(++currentCheck, totalChecks, "Checking broken links...");
+    await this.checkBrokenLinks(files, result);
+    onProgress == null ? void 0 : onProgress(++currentCheck, totalChecks, "Checking duplicate names...");
+    this.checkDuplicateNames(files, result);
+    onProgress == null ? void 0 : onProgress(++currentCheck, totalChecks, "Checking old documents...");
+    this.checkOldDocuments(files, result);
+    onProgress == null ? void 0 : onProgress(++currentCheck, totalChecks, "Checking large documents...");
+    await this.checkLargeDocuments(files, result);
+    onProgress == null ? void 0 : onProgress(++currentCheck, totalChecks, "Checking missing tags...");
+    await this.checkMissingTags(files, result);
+    onProgress == null ? void 0 : onProgress(++currentCheck, totalChecks, "Checking TODO items...");
+    await this.checkTodoItems(files, result);
+    result.totalIssues = Object.values(result.issues).reduce(
+      (sum, arr) => sum + arr.length,
+      0
+    );
+    return result;
+  }
+  async checkEmptyDocuments(files, result) {
+    for (const file of files) {
+      try {
+        const content = (await this.vault.cachedRead(file)).trim();
+        if (content.length === 0) {
+          result.issues.empty.push({ type: "empty", file });
+        } else if (content.length < 20) {
+          result.issues.nearly_empty.push({
+            type: "nearly_empty",
+            file,
+            size: content.length
+          });
+        }
+      } catch (error) {
+        console.error(`Error checking ${file.path}:`, error);
+      }
+    }
+  }
+  async checkOrphanedDocuments(files, result) {
+    const incomingLinks = /* @__PURE__ */ new Map();
+    for (const file of files) {
+      try {
+        const content = await this.vault.cachedRead(file);
+        const linkRegex = /\[\[([^\]|]+)/g;
+        let match;
+        while ((match = linkRegex.exec(content)) !== null) {
+          const target = match[1].trim();
+          if (!incomingLinks.has(target)) {
+            incomingLinks.set(target, /* @__PURE__ */ new Set());
+          }
+          incomingLinks.get(target).add(file.path);
+        }
+      } catch (error) {
+        console.error(`Error checking ${file.path}:`, error);
+      }
+    }
+    for (const file of files) {
+      const basename = file.basename;
+      if (!incomingLinks.has(basename) || incomingLinks.get(basename).size === 0) {
+        const isSpecial = /index|moc|readme|목차/i.test(basename);
+        if (!isSpecial) {
+          result.issues.orphaned.push({ type: "orphaned", file });
+        }
+      }
+    }
+  }
+  async checkBrokenLinks(files, result) {
+    for (const file of files) {
+      try {
+        const content = await this.vault.cachedRead(file);
+        const linkRegex = /\[\[([^\]|]+)/g;
+        let match;
+        while ((match = linkRegex.exec(content)) !== null) {
+          const target = match[1].trim();
+          const targetFile = this.vault.getAbstractFileByPath(`${target}.md`);
+          if (!targetFile) {
+            result.issues.broken_links.push({
+              type: "broken_link",
+              file,
+              details: target
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`Error checking ${file.path}:`, error);
+      }
+    }
+  }
+  checkDuplicateNames(files, result) {
+    const names = /* @__PURE__ */ new Map();
+    for (const file of files) {
+      const basename = file.basename;
+      if (!names.has(basename)) {
+        names.set(basename, []);
+      }
+      names.get(basename).push(file);
+    }
+    for (const [name, duplicateFiles] of names.entries()) {
+      if (duplicateFiles.length > 1) {
+        for (const file of duplicateFiles) {
+          result.issues.duplicates.push({
+            type: "duplicate",
+            file,
+            details: `${duplicateFiles.length} files named "${name}"`,
+            count: duplicateFiles.length
+          });
+        }
+      }
+    }
+  }
+  checkOldDocuments(files, result) {
+    const oneYearAgo = Date.now() - 365 * 24 * 60 * 60 * 1e3;
+    for (const file of files) {
+      if (file.stat.mtime < oneYearAgo) {
+        const daysOld = Math.floor((Date.now() - file.stat.mtime) / (24 * 60 * 60 * 1e3));
+        result.issues.old.push({
+          type: "old",
+          file,
+          days: daysOld,
+          details: `${daysOld} days old`
+        });
+      }
+    }
+  }
+  async checkLargeDocuments(files, result) {
+    const sizeThreshold = 100 * 1e3;
+    for (const file of files) {
+      if (file.stat.size > sizeThreshold) {
+        try {
+          const content = await this.vault.cachedRead(file);
+          const lines = content.split("\n").length;
+          result.issues.large.push({
+            type: "large",
+            file,
+            size: file.stat.size,
+            count: lines,
+            details: `${(file.stat.size / 1024).toFixed(1)}KB, ${lines} lines`
+          });
+        } catch (error) {
+          console.error(`Error checking ${file.path}:`, error);
+        }
+      }
+    }
+  }
+  async checkMissingTags(files, result) {
+    for (const file of files) {
+      try {
+        const content = await this.vault.cachedRead(file);
+        const tagRegex = /#(\w+)/g;
+        const hasTags = tagRegex.test(content);
+        if (!hasTags) {
+          result.issues.no_tags.push({ type: "no_tags", file });
+        }
+      } catch (error) {
+        console.error(`Error checking ${file.path}:`, error);
+      }
+    }
+  }
+  async checkTodoItems(files, result) {
+    for (const file of files) {
+      try {
+        const content = await this.vault.cachedRead(file);
+        const todoRegex = /- \[ \] /g;
+        const todos = content.match(todoRegex);
+        if (todos && todos.length > 0) {
+          result.issues.todos.push({
+            type: "todos",
+            file,
+            count: todos.length,
+            details: `${todos.length} uncompleted TODO${todos.length > 1 ? "s" : ""}`
+          });
+        }
+      } catch (error) {
+        console.error(`Error checking ${file.path}:`, error);
+      }
+    }
+  }
+};
+
 // src/ui/SearchModal.ts
 var import_obsidian4 = require("obsidian");
 var SearchModal = class extends import_obsidian4.Modal {
@@ -987,6 +1195,124 @@ var LinkSuggestionModal = class extends import_obsidian7.Modal {
   }
 };
 
+// src/ui/HealthCheckModal.ts
+var import_obsidian8 = require("obsidian");
+var HealthCheckModal = class extends import_obsidian8.Modal {
+  constructor(app, healthService) {
+    super(app);
+    this.result = null;
+    this.isRunning = false;
+    this.healthService = healthService;
+  }
+  async onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("sage-ai-health-modal");
+    const header = contentEl.createDiv("sage-ai-modal-header");
+    header.createEl("h2", { text: "\u{1F3E5} Vault Health Check" });
+    header.createEl("p", {
+      text: "Analyzing your vault for potential issues...",
+      cls: "sage-ai-modal-description"
+    });
+    const statusEl = contentEl.createDiv("sage-ai-health-status");
+    statusEl.setText("\u{1F50D} Starting health check...");
+    const progressContainer = contentEl.createDiv("sage-ai-progress-container");
+    const progressBar = progressContainer.createDiv("sage-ai-progress-bar");
+    const resultsEl = contentEl.createDiv("sage-ai-health-results");
+    this.isRunning = true;
+    try {
+      this.result = await this.healthService.runHealthCheck(
+        (current, total, checkName) => {
+          const percent = current / total * 100;
+          progressBar.style.width = `${percent}%`;
+          statusEl.setText(`\u{1F50D} ${checkName} (${current}/${total})`);
+        }
+      );
+      this.isRunning = false;
+      statusEl.setText(
+        `\u2705 Health check complete! Found ${this.result.totalIssues} issue${this.result.totalIssues !== 1 ? "s" : ""} in ${this.result.totalFiles} files.`
+      );
+      progressBar.style.width = "100%";
+      this.renderResults(resultsEl);
+    } catch (error) {
+      this.isRunning = false;
+      statusEl.setText("\u274C Error running health check");
+      console.error("Health check error:", error);
+      new import_obsidian8.Notice(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+  renderResults(container) {
+    container.empty();
+    if (!this.result)
+      return;
+    if (this.result.totalIssues === 0) {
+      const successEl = container.createDiv("sage-ai-health-success");
+      successEl.createEl("h3", { text: "\u2705 Your vault is healthy!" });
+      successEl.createEl("p", { text: "No issues found." });
+      return;
+    }
+    const summaryEl = container.createDiv("sage-ai-health-summary");
+    summaryEl.createEl("h3", { text: "\u{1F4CA} Summary" });
+    summaryEl.createEl("p", {
+      text: `Total files scanned: ${this.result.totalFiles}`
+    });
+    summaryEl.createEl("p", {
+      text: `Total issues found: ${this.result.totalIssues}`
+    });
+    const issues = this.result.issues;
+    this.renderIssueSection(container, "\u{1F4C4} Empty Documents", issues.empty);
+    this.renderIssueSection(container, "\u26A0\uFE0F Nearly Empty Documents (< 20 chars)", issues.nearly_empty);
+    this.renderIssueSection(container, "\u{1F517} Orphaned Documents (No Incoming Links)", issues.orphaned);
+    this.renderIssueSection(container, "\u{1F517} Broken Links", issues.broken_links);
+    this.renderIssueSection(container, "\u{1F4C1} Duplicate Names", issues.duplicates);
+    this.renderIssueSection(container, "\u23F0 Old Documents (> 1 year)", issues.old);
+    this.renderIssueSection(container, "\u{1F4CF} Large Documents (> 100KB)", issues.large);
+    this.renderIssueSection(container, "\u{1F3F7}\uFE0F Documents Without Tags", issues.no_tags);
+    this.renderIssueSection(container, "\u2705 Documents With Uncompleted TODOs", issues.todos);
+    if (this.result.totalIssues > 0) {
+      const suggestionsEl = container.createDiv("sage-ai-health-suggestions");
+      suggestionsEl.createEl("h3", { text: "\u{1F4A1} Suggestions" });
+      const list = suggestionsEl.createEl("ul");
+      list.createEl("li", { text: "Empty documents: Add content or delete them" });
+      list.createEl("li", { text: "Orphaned documents: Link them from other notes" });
+      list.createEl("li", { text: "Broken links: Fix or remove invalid links" });
+      list.createEl("li", { text: "Duplicate names: Rename to make them unique" });
+      list.createEl("li", { text: "Old documents: Archive or delete outdated content" });
+    }
+  }
+  renderIssueSection(container, title, issues) {
+    if (issues.length === 0)
+      return;
+    const section = container.createDiv("sage-ai-health-section");
+    const headerEl = section.createDiv("sage-ai-health-section-header");
+    headerEl.createEl("h4", { text: `${title} (${issues.length})` });
+    const listEl = section.createDiv("sage-ai-health-issue-list");
+    const maxDisplay = 10;
+    const displayIssues = issues.slice(0, maxDisplay);
+    for (const issue of displayIssues) {
+      const itemEl = listEl.createDiv("sage-ai-health-issue-item");
+      const titleEl = itemEl.createDiv("sage-ai-health-issue-title");
+      titleEl.setText(issue.file.path);
+      if (issue.details) {
+        const detailsEl = itemEl.createDiv("sage-ai-health-issue-details");
+        detailsEl.setText(issue.details);
+      }
+      itemEl.addEventListener("click", () => {
+        this.app.workspace.getLeaf().openFile(issue.file);
+        this.close();
+      });
+    }
+    if (issues.length > maxDisplay) {
+      const moreEl = listEl.createDiv("sage-ai-health-issue-more");
+      moreEl.setText(`... and ${issues.length - maxDisplay} more`);
+    }
+  }
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
+};
+
 // src/main.ts
 var DEFAULT_SETTINGS = {
   ollamaUrl: "http://127.0.0.1:11434",
@@ -996,7 +1322,7 @@ var DEFAULT_SETTINGS = {
   maxResults: 8,
   minScore: 0.3
 };
-var SageAIPlugin = class extends import_obsidian8.Plugin {
+var SageAIPlugin = class extends import_obsidian9.Plugin {
   async onload() {
     await this.loadSettings();
     this.initializeServices();
@@ -1032,6 +1358,13 @@ var SageAIPlugin = class extends import_obsidian8.Plugin {
       }
     });
     this.addCommand({
+      id: "sage-ai-health-check",
+      name: "Vault Health Check",
+      callback: () => {
+        new HealthCheckModal(this.app, this.healthCheck).open();
+      }
+    });
+    this.addCommand({
       id: "sage-ai-status",
       name: "Check Connection Status",
       callback: async () => {
@@ -1059,15 +1392,16 @@ var SageAIPlugin = class extends import_obsidian8.Plugin {
       this.ollama,
       this.qdrant
     );
+    this.healthCheck = new HealthCheckService(this.app.vault);
   }
   async openSearchModal() {
     const health = await this.indexer.healthCheck();
     if (!health.ollama.healthy) {
-      new import_obsidian8.Notice(`Sage AI: ${health.ollama.message}`);
+      new import_obsidian9.Notice(`Sage AI: ${health.ollama.message}`);
       return;
     }
     if (!health.qdrant.healthy) {
-      new import_obsidian8.Notice(`Sage AI: ${health.qdrant.message}. Run "Rebuild Index" first.`);
+      new import_obsidian9.Notice(`Sage AI: ${health.qdrant.message}. Run "Rebuild Index" first.`);
       return;
     }
     new SearchModal(
@@ -1083,7 +1417,7 @@ var SageAIPlugin = class extends import_obsidian8.Plugin {
     console.log("[SageAI] Active file:", activeFile == null ? void 0 : activeFile.path);
     if (!activeFile) {
       console.warn("[SageAI] No active file");
-      new import_obsidian8.Notice("No active file");
+      new import_obsidian9.Notice("No active file");
       return;
     }
     console.log("[SageAI] Performing health check...");
@@ -1091,12 +1425,12 @@ var SageAIPlugin = class extends import_obsidian8.Plugin {
     console.log("[SageAI] Health check result:", health);
     if (!health.ollama.healthy) {
       console.warn("[SageAI] Ollama not healthy:", health.ollama.message);
-      new import_obsidian8.Notice(`Sage AI: ${health.ollama.message}`);
+      new import_obsidian9.Notice(`Sage AI: ${health.ollama.message}`);
       return;
     }
     if (!health.qdrant.healthy) {
       console.warn("[SageAI] Qdrant not healthy:", health.qdrant.message);
-      new import_obsidian8.Notice(`Sage AI: ${health.qdrant.message}. Run "Rebuild Index" first.`);
+      new import_obsidian9.Notice(`Sage AI: ${health.qdrant.message}. Run "Rebuild Index" first.`);
       return;
     }
     console.log("[SageAI] Opening modal...");
@@ -1107,7 +1441,7 @@ var SageAIPlugin = class extends import_obsidian8.Plugin {
     ).open();
   }
   async checkStatus() {
-    new import_obsidian8.Notice("Sage AI: Checking connections...");
+    new import_obsidian9.Notice("Sage AI: Checking connections...");
     try {
       const health = await this.indexer.healthCheck();
       const stats = await this.indexer.getStats();
@@ -1121,9 +1455,9 @@ Qdrant: ${health.qdrant.healthy ? "\u2713" : "\u2717"} ${health.qdrant.message}`
 
 Indexed documents: ${stats.totalDocuments}`;
       }
-      new import_obsidian8.Notice(message, 1e4);
+      new import_obsidian9.Notice(message, 1e4);
     } catch (error) {
-      new import_obsidian8.Notice(
+      new import_obsidian9.Notice(
         `Sage AI: Error checking status - ${error instanceof Error ? error.message : "Unknown error"}`
       );
     }
@@ -1149,7 +1483,7 @@ Indexed documents: ${stats.totalDocuments}`;
     }
   }
 };
-var SageAISettingTab = class extends import_obsidian8.PluginSettingTab {
+var SageAISettingTab = class extends import_obsidian9.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -1159,46 +1493,46 @@ var SageAISettingTab = class extends import_obsidian8.PluginSettingTab {
     containerEl.empty();
     containerEl.createEl("h2", { text: "Sage AI Settings" });
     containerEl.createEl("h3", { text: "Ollama Configuration" });
-    new import_obsidian8.Setting(containerEl).setName("Ollama URL").setDesc("URL of your Ollama server").addText(
+    new import_obsidian9.Setting(containerEl).setName("Ollama URL").setDesc("URL of your Ollama server").addText(
       (text) => text.setPlaceholder("http://127.0.0.1:11434").setValue(this.plugin.settings.ollamaUrl).onChange(async (value) => {
         this.plugin.settings.ollamaUrl = value;
         await this.plugin.saveSettings();
       })
     );
-    new import_obsidian8.Setting(containerEl).setName("Embedding Model").setDesc("Ollama model for generating embeddings (bge-m3 recommended)").addText(
+    new import_obsidian9.Setting(containerEl).setName("Embedding Model").setDesc("Ollama model for generating embeddings (bge-m3 recommended)").addText(
       (text) => text.setPlaceholder("bge-m3").setValue(this.plugin.settings.ollamaModel).onChange(async (value) => {
         this.plugin.settings.ollamaModel = value;
         await this.plugin.saveSettings();
       })
     );
     containerEl.createEl("h3", { text: "Qdrant Configuration" });
-    new import_obsidian8.Setting(containerEl).setName("Qdrant URL").setDesc("URL of your Qdrant server").addText(
+    new import_obsidian9.Setting(containerEl).setName("Qdrant URL").setDesc("URL of your Qdrant server").addText(
       (text) => text.setPlaceholder("http://127.0.0.1:6333").setValue(this.plugin.settings.qdrantUrl).onChange(async (value) => {
         this.plugin.settings.qdrantUrl = value;
         await this.plugin.saveSettings();
       })
     );
-    new import_obsidian8.Setting(containerEl).setName("Collection Name").setDesc("Qdrant collection name for storing vectors").addText(
+    new import_obsidian9.Setting(containerEl).setName("Collection Name").setDesc("Qdrant collection name for storing vectors").addText(
       (text) => text.setPlaceholder("obsidian_docs").setValue(this.plugin.settings.qdrantCollection).onChange(async (value) => {
         this.plugin.settings.qdrantCollection = value;
         await this.plugin.saveSettings();
       })
     );
     containerEl.createEl("h3", { text: "Search Configuration" });
-    new import_obsidian8.Setting(containerEl).setName("Max Results").setDesc("Maximum number of search results to return").addSlider(
+    new import_obsidian9.Setting(containerEl).setName("Max Results").setDesc("Maximum number of search results to return").addSlider(
       (slider) => slider.setLimits(1, 20, 1).setValue(this.plugin.settings.maxResults).setDynamicTooltip().onChange(async (value) => {
         this.plugin.settings.maxResults = value;
         await this.plugin.saveSettings();
       })
     );
-    new import_obsidian8.Setting(containerEl).setName("Minimum Score").setDesc("Minimum similarity score for results (0-1)").addSlider(
+    new import_obsidian9.Setting(containerEl).setName("Minimum Score").setDesc("Minimum similarity score for results (0-1)").addSlider(
       (slider) => slider.setLimits(0, 1, 0.05).setValue(this.plugin.settings.minScore).setDynamicTooltip().onChange(async (value) => {
         this.plugin.settings.minScore = value;
         await this.plugin.saveSettings();
       })
     );
     containerEl.createEl("h3", { text: "Connection Test" });
-    new import_obsidian8.Setting(containerEl).setName("Test Connections").setDesc("Test connection to Ollama and Qdrant servers").addButton(
+    new import_obsidian9.Setting(containerEl).setName("Test Connections").setDesc("Test connection to Ollama and Qdrant servers").addButton(
       (button) => button.setButtonText("Test").onClick(async () => {
         button.setButtonText("Testing...");
         button.setDisabled(true);
@@ -1219,9 +1553,9 @@ var SageAISettingTab = class extends import_obsidian8.PluginSettingTab {
           message += `Ollama: ${ollamaHealth.healthy ? "\u2713" : "\u2717"} ${ollamaHealth.message}
 `;
           message += `Qdrant: ${qdrantHealth.healthy ? "\u2713" : "\u2717"} ${qdrantHealth.message}`;
-          new import_obsidian8.Notice(message, 8e3);
+          new import_obsidian9.Notice(message, 8e3);
         } catch (error) {
-          new import_obsidian8.Notice(
+          new import_obsidian9.Notice(
             `Error: ${error instanceof Error ? error.message : "Test failed"}`
           );
         } finally {
