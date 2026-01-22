@@ -1,4 +1,10 @@
 import { Plugin, PluginSettingTab, App, Setting, Notice } from 'obsidian';
+import { OllamaService } from './services/ollama';
+import { QdrantService } from './services/qdrant';
+import { DocumentIndexer } from './services/indexer';
+import { SearchModal } from './ui/SearchModal';
+import { JumpModal } from './ui/JumpModal';
+import { IndexModal } from './ui/IndexModal';
 
 interface SageAISettings {
   ollamaUrl: string;
@@ -20,13 +26,17 @@ const DEFAULT_SETTINGS: SageAISettings = {
 
 export default class SageAIPlugin extends Plugin {
   settings: SageAISettings;
+  private ollama: OllamaService;
+  private qdrant: QdrantService;
+  private indexer: DocumentIndexer;
 
   async onload() {
     await this.loadSettings();
+    this.initializeServices();
 
     // Add ribbon icon
     this.addRibbonIcon('search', 'Sage AI Search', () => {
-      new Notice('Sage AI: Search coming soon!');
+      this.openSearchModal();
     });
 
     // Add command: Semantic Search
@@ -34,7 +44,7 @@ export default class SageAIPlugin extends Plugin {
       id: 'sage-ai-search',
       name: 'Semantic Search',
       callback: () => {
-        new Notice('Sage AI: Semantic Search - Coming Soon!');
+        this.openSearchModal();
       },
     });
 
@@ -43,7 +53,7 @@ export default class SageAIPlugin extends Plugin {
       id: 'sage-ai-jump',
       name: 'Jump to Document',
       callback: () => {
-        new Notice('Sage AI: Jump to Document - Coming Soon!');
+        new JumpModal(this.app).open();
       },
     });
 
@@ -52,7 +62,16 @@ export default class SageAIPlugin extends Plugin {
       id: 'sage-ai-reindex',
       name: 'Rebuild Index',
       callback: () => {
-        new Notice('Sage AI: Rebuild Index - Coming Soon!');
+        new IndexModal(this.app, this.indexer).open();
+      },
+    });
+
+    // Add command: Check Status
+    this.addCommand({
+      id: 'sage-ai-status',
+      name: 'Check Connection Status',
+      callback: async () => {
+        await this.checkStatus();
       },
     });
 
@@ -60,6 +79,69 @@ export default class SageAIPlugin extends Plugin {
     this.addSettingTab(new SageAISettingTab(this.app, this));
 
     console.log('Sage AI plugin loaded');
+  }
+
+  private initializeServices() {
+    this.ollama = new OllamaService({
+      baseUrl: this.settings.ollamaUrl,
+      model: this.settings.ollamaModel,
+    });
+
+    this.qdrant = new QdrantService({
+      baseUrl: this.settings.qdrantUrl,
+      collection: this.settings.qdrantCollection,
+    });
+
+    this.indexer = new DocumentIndexer({
+      ollama: this.ollama,
+      qdrant: this.qdrant,
+      app: this.app,
+    });
+  }
+
+  private async openSearchModal() {
+    // Quick health check before opening
+    const health = await this.indexer.healthCheck();
+
+    if (!health.ollama.healthy) {
+      new Notice(`Sage AI: ${health.ollama.message}`);
+      return;
+    }
+
+    if (!health.qdrant.healthy) {
+      new Notice(`Sage AI: ${health.qdrant.message}. Run "Rebuild Index" first.`);
+      return;
+    }
+
+    new SearchModal(
+      this.app,
+      this.indexer,
+      this.settings.maxResults,
+      this.settings.minScore
+    ).open();
+  }
+
+  private async checkStatus() {
+    new Notice('Sage AI: Checking connections...');
+
+    try {
+      const health = await this.indexer.healthCheck();
+      const stats = await this.indexer.getStats();
+
+      let message = 'Sage AI Status:\n';
+      message += `\nOllama: ${health.ollama.healthy ? '✓' : '✗'} ${health.ollama.message}`;
+      message += `\nQdrant: ${health.qdrant.healthy ? '✓' : '✗'} ${health.qdrant.message}`;
+
+      if (stats) {
+        message += `\n\nIndexed documents: ${stats.totalDocuments}`;
+      }
+
+      new Notice(message, 10000);
+    } catch (error) {
+      new Notice(
+        `Sage AI: Error checking status - ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
   onunload() {
@@ -72,6 +154,21 @@ export default class SageAIPlugin extends Plugin {
 
   async saveSettings() {
     await this.saveData(this.settings);
+
+    // Update service configurations
+    if (this.ollama) {
+      this.ollama.updateConfig({
+        baseUrl: this.settings.ollamaUrl,
+        model: this.settings.ollamaModel,
+      });
+    }
+
+    if (this.qdrant) {
+      this.qdrant.updateConfig({
+        baseUrl: this.settings.qdrantUrl,
+        collection: this.settings.qdrantCollection,
+      });
+    }
   }
 }
 
@@ -108,7 +205,7 @@ class SageAISettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Embedding Model')
-      .setDesc('Ollama model for generating embeddings')
+      .setDesc('Ollama model for generating embeddings (bge-m3 recommended)')
       .addText((text) =>
         text
           .setPlaceholder('bge-m3')
@@ -179,7 +276,7 @@ class SageAISettingTab extends PluginSettingTab {
           })
       );
 
-    // Test Connection Button
+    // Connection Test
     containerEl.createEl('h3', { text: 'Connection Test' });
 
     new Setting(containerEl)
@@ -187,7 +284,37 @@ class SageAISettingTab extends PluginSettingTab {
       .setDesc('Test connection to Ollama and Qdrant servers')
       .addButton((button) =>
         button.setButtonText('Test').onClick(async () => {
-          new Notice('Testing connections... (Coming Soon)');
+          button.setButtonText('Testing...');
+          button.setDisabled(true);
+
+          try {
+            const ollama = new OllamaService({
+              baseUrl: this.plugin.settings.ollamaUrl,
+              model: this.plugin.settings.ollamaModel,
+            });
+            const qdrant = new QdrantService({
+              baseUrl: this.plugin.settings.qdrantUrl,
+              collection: this.plugin.settings.qdrantCollection,
+            });
+
+            const [ollamaHealth, qdrantHealth] = await Promise.all([
+              ollama.healthCheck(),
+              qdrant.healthCheck(),
+            ]);
+
+            let message = '';
+            message += `Ollama: ${ollamaHealth.healthy ? '✓' : '✗'} ${ollamaHealth.message}\n`;
+            message += `Qdrant: ${qdrantHealth.healthy ? '✓' : '✗'} ${qdrantHealth.message}`;
+
+            new Notice(message, 8000);
+          } catch (error) {
+            new Notice(
+              `Error: ${error instanceof Error ? error.message : 'Test failed'}`
+            );
+          } finally {
+            button.setButtonText('Test');
+            button.setDisabled(false);
+          }
         })
       );
   }

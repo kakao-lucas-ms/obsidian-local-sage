@@ -9,6 +9,6 @@
     "lint": "python3 -m flake8 src/ tests/",
     "format": "python3 -m black src/ tests/",
     "build": "python3 -m build",
-    "install": "pip install -e '.[dev]'"
+    "setup": "pip install -e '.[dev]'"
   }
 }

@@ -1,0 +1,136 @@
+/* Sage AI Plugin Styles */
+
+/* Search Modal */
+.sage-ai-search-modal {
+  min-width: 600px;
+}
+
+.sage-ai-search-input-container {
+  margin-bottom: 12px;
+}
+
+.sage-ai-search-input {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+}
+
+.sage-ai-search-input:focus {
+  border-color: var(--interactive-accent);
+  outline: none;
+}
+
+.sage-ai-search-status {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.sage-ai-search-results {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.sage-ai-search-result {
+  padding: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+}
+
+.sage-ai-search-result:hover {
+  background: var(--background-secondary);
+  border-color: var(--background-modifier-border);
+}
+
+.sage-ai-result-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.sage-ai-result-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.sage-ai-result-score {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.sage-ai-result-path {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.sage-ai-result-excerpt {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Jump Modal */
+.sage-ai-jump-suggestion {
+  padding: 4px 0;
+}
+
+.sage-ai-jump-title {
+  font-weight: 500;
+}
+
+.sage-ai-jump-path {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.sage-ai-jump-mtime {
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+/* Index Modal */
+.sage-ai-index-modal {
+  min-width: 400px;
+}
+
+.sage-ai-index-description {
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.sage-ai-progress-container {
+  height: 8px;
+  background: var(--background-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.sage-ai-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--interactive-accent);
+  transition: width 0.2s ease;
+}
+
+.sage-ai-index-status {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  word-break: break-all;
+}
+
+.sage-ai-button-container {
+  display: flex;
+  justify-content: flex-end;
+}
