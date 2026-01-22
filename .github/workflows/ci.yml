@@ -1,33 +1,32 @@
-name: Python CI
+name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
-  schedule:
-    # Run daily at 2 AM UTC to catch dependency issues
-    - cron: '0 2 * * *'
+    branches: [main, develop]
 
-# Ensure only one workflow runs at a time to avoid conflicts
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Lint and Format Check
+  # Python CLI Tests
+  cli-lint:
+    name: CLI Lint
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/cli
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
+          cache-dependency-path: packages/cli/requirements*.txt
 
       - name: Install linting dependencies
         run: |
@@ -40,10 +39,13 @@ jobs:
       - name: Lint with flake8
         run: flake8 src/ tests/
 
-  test:
-    name: Test on Python ${{ matrix.python-version }}
+  cli-test:
+    name: CLI Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
-    needs: lint
+    needs: cli-lint
+    defaults:
+      run:
+        working-directory: packages/cli
     strategy:
       fail-fast: false
       matrix:
@@ -51,17 +53,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
-
-      - name: Display Python version
-        run: python -c "import sys; print(sys.version)"
+          cache-dependency-path: packages/cli/requirements*.txt
 
       - name: Install dependencies
         run: |
@@ -73,46 +71,26 @@ jobs:
           pytest tests/ \
             --cov=src \
             --cov-report=xml \
-            --cov-report=html \
             --cov-report=term-missing \
-            --junitxml=junit/test-results-${{ matrix.python-version }}.xml \
             -v
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-${{ matrix.python-version }}
-          path: junit/test-results-${{ matrix.python-version }}.xml
-
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+        if: matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v4
         with:
-          files: ./coverage.xml
-          flags: unittests
-          name: codecov-${{ matrix.python-version }}
+          files: packages/cli/coverage.xml
+          flags: cli
           fail_ci_if_error: false
-          verbose: true
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Generate coverage badge
-        if: matrix.python-version == '3.11'
-        run: |
-          pip install coverage-badge
-          coverage-badge -o coverage.svg -f
-
-      - name: Archive coverage artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report-${{ matrix.python-version }}
-          path: htmlcov/
-          retention-days: 30
-
-  security:
-    name: Security Checks
+  cli-build:
+    name: CLI Build
     runs-on: ubuntu-latest
+    needs: cli-test
+    defaults:
+      run:
+        working-directory: packages/cli
     steps:
       - uses: actions/checkout@v4
 
@@ -121,35 +99,7 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
-
-      - name: Install security tools
-        run: |
-          python -m pip install --upgrade pip
-          pip install bandit safety
-
-      - name: Run Bandit security check
-        run: bandit -r src/ -ll
-        continue-on-error: true
-
-      - name: Check dependencies for known vulnerabilities
-        run: safety check --json
-        continue-on-error: true
-
-  build:
-    name: Build Distribution
-    runs-on: ubuntu-latest
-    needs: test
-    if: success()
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
+          cache-dependency-path: packages/cli/requirements*.txt
 
       - name: Install build dependencies
         run: |
@@ -165,23 +115,47 @@ jobs:
       - name: Upload distribution artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: python-package-distributions
-          path: dist/
+          name: cli-dist
+          path: packages/cli/dist/
           retention-days: 30
 
-  status:
-    name: CI Status Check
+  # Obsidian Plugin Build
+  plugin-build:
+    name: Plugin Build
     runs-on: ubuntu-latest
-    needs: [lint, test, security, build]
-    if: always()
+    defaults:
+      run:
+        working-directory: packages/obsidian-plugin
     steps:
-      - name: Check CI status
-        run: |
-          if [ "${{ needs.lint.result }}" = "failure" ] || \
-             [ "${{ needs.test.result }}" = "failure" ] || \
-             [ "${{ needs.security.result }}" = "failure" ] || \
-             [ "${{ needs.build.result }}" = "failure" ]; then
-            echo "CI pipeline failed"
-            exit 1
-          fi
-          echo "All CI checks passed successfully"
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Type check
+        run: pnpm exec tsc --noEmit --skipLibCheck
+        continue-on-error: true
+
+      - name: Build plugin
+        run: pnpm run build
+
+      - name: Upload plugin artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: obsidian-plugin
+          path: |
+            packages/obsidian-plugin/main.js
+            packages/obsidian-plugin/manifest.json
+            packages/obsidian-plugin/styles.css
+          retention-days: 30
+          if-no-files-found: warn

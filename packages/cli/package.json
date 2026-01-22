@@ -1,0 +1,14 @@
+{
+  "name": "@obsidian-local-sage/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Python CLI for Obsidian Local Sage",
+  "scripts": {
+    "test": "python3 -m pytest tests/ -v",
+    "test:cov": "python3 -m pytest tests/ --cov=src --cov-report=term-missing",
+    "lint": "python3 -m flake8 src/ tests/",
+    "format": "python3 -m black src/ tests/",
+    "build": "python3 -m build",
+    "install": "pip install -e '.[dev]'"
+  }
+}

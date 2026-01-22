@@ -1,0 +1,11 @@
+{
+  "id": "sage-ai",
+  "name": "Sage AI",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "AI-powered semantic search and document tools using local Ollama and Qdrant",
+  "author": "kakao-lucas-ms",
+  "authorUrl": "https://github.com/kakao-lucas-ms",
+  "fundingUrl": "",
+  "isDesktopOnly": true
+}

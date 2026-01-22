@@ -11,6 +11,9 @@ jobs:
   build:
     name: Build distribution
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/cli
 
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +38,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: dist/
+          path: packages/cli/dist/
 
   publish-pypi:
     name: Publish to PyPI
