@@ -62,11 +62,17 @@ def extract_key_phrases(file_path):
             content = f.read()
 
         # Extract first paragraph (usually most important)
-        lines = [line.strip() for line in content.split("\n") if line.strip() and not line.startswith("#")]
+        lines = [
+            line.strip()
+            for line in content.split("\n")
+            if line.strip() and not line.startswith("#")
+        ]
         first_para = lines[0] if lines else ""
 
         # Extract headings
-        headings = [line.strip("#").strip() for line in content.split("\n") if line.startswith("##")]
+        headings = [
+            line.strip("#").strip() for line in content.split("\n") if line.startswith("##")
+        ]
 
         # Combine for context
         context = f"{first_para} {' '.join(headings[:3])}"
