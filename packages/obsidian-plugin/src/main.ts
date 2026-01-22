@@ -1,10 +1,12 @@
-import { Plugin, PluginSettingTab, App, Setting, Notice } from 'obsidian';
+import { Plugin, PluginSettingTab, App, Setting, Notice, TFile } from 'obsidian';
 import { OllamaService } from './services/ollama';
 import { QdrantService } from './services/qdrant';
 import { DocumentIndexer } from './services/indexer';
+import { LinkSuggestionService } from './services/linkSuggestion';
 import { SearchModal } from './ui/SearchModal';
 import { JumpModal } from './ui/JumpModal';
 import { IndexModal } from './ui/IndexModal';
+import { LinkSuggestionModal } from './ui/LinkSuggestionModal';
 
 interface SageAISettings {
   ollamaUrl: string;
@@ -29,6 +31,7 @@ export default class SageAIPlugin extends Plugin {
   private ollama: OllamaService;
   private qdrant: QdrantService;
   private indexer: DocumentIndexer;
+  private linkSuggestion: LinkSuggestionService;
 
   async onload() {
     await this.loadSettings();
@@ -66,6 +69,15 @@ export default class SageAIPlugin extends Plugin {
       },
     });
 
+    // Add command: Suggest Links
+    this.addCommand({
+      id: 'sage-ai-suggest-links',
+      name: 'Suggest Links for Current Note',
+      editorCallback: () => {
+        this.openLinkSuggestionModal();
+      },
+    });
+
     // Add command: Check Status
     this.addCommand({
       id: 'sage-ai-status',
@@ -96,6 +108,12 @@ export default class SageAIPlugin extends Plugin {
       qdrant: this.qdrant,
       app: this.app,
     });
+
+    this.linkSuggestion = new LinkSuggestionService(
+      this.app.vault,
+      this.ollama,
+      this.qdrant
+    );
   }
 
   private async openSearchModal() {
@@ -117,6 +135,43 @@ export default class SageAIPlugin extends Plugin {
       this.indexer,
       this.settings.maxResults,
       this.settings.minScore
+    ).open();
+  }
+
+  private async openLinkSuggestionModal() {
+    console.log('[SageAI] Opening Link Suggestion Modal');
+
+    const activeFile = this.app.workspace.getActiveFile();
+    console.log('[SageAI] Active file:', activeFile?.path);
+
+    if (!activeFile) {
+      console.warn('[SageAI] No active file');
+      new Notice('No active file');
+      return;
+    }
+
+    // Quick health check
+    console.log('[SageAI] Performing health check...');
+    const health = await this.indexer.healthCheck();
+    console.log('[SageAI] Health check result:', health);
+
+    if (!health.ollama.healthy) {
+      console.warn('[SageAI] Ollama not healthy:', health.ollama.message);
+      new Notice(`Sage AI: ${health.ollama.message}`);
+      return;
+    }
+
+    if (!health.qdrant.healthy) {
+      console.warn('[SageAI] Qdrant not healthy:', health.qdrant.message);
+      new Notice(`Sage AI: ${health.qdrant.message}. Run "Rebuild Index" first.`);
+      return;
+    }
+
+    console.log('[SageAI] Opening modal...');
+    new LinkSuggestionModal(
+      this.app,
+      activeFile,
+      this.linkSuggestion
     ).open();
   }
 

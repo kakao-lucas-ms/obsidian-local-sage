@@ -134,3 +134,121 @@
   display: flex;
   justify-content: flex-end;
 }
+
+/* Link Suggestion Modal */
+.sage-ai-link-modal {
+  min-width: 600px;
+}
+
+.sage-ai-modal-header h2 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.sage-ai-modal-description {
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.sage-ai-link-status {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  padding: 8px;
+  background: var(--background-secondary);
+  border-radius: 4px;
+}
+
+.sage-ai-link-results {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.sage-ai-link-item {
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sage-ai-link-item:hover {
+  background: var(--background-secondary);
+  border-color: var(--interactive-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.sage-ai-link-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.sage-ai-link-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-normal);
+}
+
+.sage-ai-link-score {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--background-modifier-success);
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.sage-ai-link-wikilink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sage-ai-link-wikilink code {
+  flex: 1;
+  padding: 4px 8px;
+  background: var(--code-background);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--code-normal);
+  font-family: var(--font-monospace);
+}
+
+.sage-ai-copy-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.sage-ai-copy-btn:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.sage-ai-link-snippet {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  padding: 8px;
+  background: var(--background-secondary);
+  border-radius: 4px;
+  border-left: 3px solid var(--background-modifier-border);
+}
+
+.sage-ai-link-help {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--background-secondary);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
