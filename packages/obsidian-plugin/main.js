@@ -829,7 +829,6 @@ var SageAIPlugin = class extends import_obsidian6.Plugin {
       }
     });
     this.addSettingTab(new SageAISettingTab(this.app, this));
-    console.log("Sage AI plugin loaded");
   }
   initializeServices() {
     this.ollama = new OllamaService({
@@ -886,7 +885,6 @@ Indexed documents: ${stats.totalDocuments}`;
     }
   }
   onunload() {
-    console.log("Sage AI plugin unloaded");
   }
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());

@@ -78,7 +78,6 @@ export default class SageAIPlugin extends Plugin {
     // Add settings tab
     this.addSettingTab(new SageAISettingTab(this.app, this));
 
-    console.log('Sage AI plugin loaded');
   }
 
   private initializeServices() {
@@ -145,7 +144,7 @@ export default class SageAIPlugin extends Plugin {
   }
 
   onunload() {
-    console.log('Sage AI plugin unloaded');
+    // Clean up resources if needed
   }
 
   async loadSettings() {

@@ -1,0 +1,79 @@
+name: Plugin Release
+
+on:
+  push:
+    tags:
+      - 'plugin-*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Plugin
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/obsidian-plugin
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build plugin
+        run: pnpm run build
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#plugin-}" >> $GITHUB_OUTPUT
+
+      - name: Update manifest version
+        run: |
+          jq '.version = "${{ steps.version.outputs.version }}"' manifest.json > manifest.tmp.json
+          mv manifest.tmp.json manifest.json
+
+      - name: Create release archive
+        run: |
+          mkdir -p release
+          cp main.js manifest.json styles.css release/
+          cd release && zip -r ../sage-ai-${{ steps.version.outputs.version }}.zip .
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Sage AI Plugin v${{ steps.version.outputs.version }}
+          body: |
+            ## Installation
+
+            ### From Obsidian
+            1. Open Settings > Community Plugins
+            2. Search for "Sage AI"
+            3. Install and Enable
+
+            ### Manual Installation
+            1. Download `sage-ai-${{ steps.version.outputs.version }}.zip`
+            2. Extract to `.obsidian/plugins/sage-ai/`
+            3. Enable in Settings > Community Plugins
+
+            ## Requirements
+            - [Ollama](https://ollama.ai/) with bge-m3 model
+            - [Qdrant](https://qdrant.tech/) vector database
+          files: |
+            packages/obsidian-plugin/sage-ai-${{ steps.version.outputs.version }}.zip
+            packages/obsidian-plugin/main.js
+            packages/obsidian-plugin/manifest.json
+            packages/obsidian-plugin/styles.css
+          draft: false
+          prerelease: false
