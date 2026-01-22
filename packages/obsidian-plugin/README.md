@@ -6,6 +6,9 @@
 
 - **Semantic Search** - Search your vault by meaning, not just keywords
 - **Jump to Document** - Fast fuzzy finder sorted by recent modifications
+- **Link Suggestions** - AI-powered suggestions for connecting related documents
+- **Vault Health Check** - Diagnose vault issues (empty docs, broken links, orphans, etc.)
+- **Document Comparison** - Analyze similarities and differences between two documents
 - **Vault Indexing** - Index all your notes for instant search
 
 ## Prerequisites
@@ -59,6 +62,9 @@ Open the command palette (Cmd/Ctrl + P) and search for:
 
 - **Sage AI: Semantic Search** - Search your vault by meaning
 - **Sage AI: Jump to Document** - Quick fuzzy finder
+- **Sage AI: Suggest Links for Current Note** - Get AI-powered link suggestions
+- **Sage AI: Vault Health Check** - Diagnose vault health issues
+- **Sage AI: Compare with Another Document** - Compare current document with another
 - **Sage AI: Rebuild Index** - Re-index all documents
 - **Sage AI: Check Connection Status** - Verify Ollama & Qdrant connections
 
@@ -93,6 +99,37 @@ pnpm run dev
 # Production build
 pnpm run build
 ```
+
+## How It Works
+
+### Link Suggestions
+Analyzes the current document's content using embeddings, finds semantically similar documents in your vault, and suggests relevant wikilinks to add.
+
+### Vault Health Check
+Performs 8 diagnostic checks:
+- Empty documents (0 characters)
+- Nearly empty documents (< 20 characters)
+- Orphaned documents (no incoming links)
+- Broken wikilinks
+- Duplicate file names
+- Old documents (not modified in 1+ year)
+- Large documents (> 100KB)
+- Documents without tags
+- Uncompleted TODO items
+
+### Document Comparison
+Compares two documents and provides:
+- Semantic similarity score (using embeddings)
+- Text match percentage
+- Common tags and links
+- Shared keywords vs unique keywords
+- Actionable suggestions (merge, link, or organize)
+
+## Privacy & Security
+
+**Everything runs locally on your machine.** No data is sent to external servers. Sage AI uses:
+- **Ollama** for local embeddings (bge-m3 model)
+- **Qdrant** for local vector search
 
 ## License
 
