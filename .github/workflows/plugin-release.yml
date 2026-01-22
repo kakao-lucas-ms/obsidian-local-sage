@@ -44,6 +44,11 @@ jobs:
           jq '.version = "${{ steps.version.outputs.version }}"' manifest.json > manifest.tmp.json
           mv manifest.tmp.json manifest.json
 
+      - name: Update versions.json
+        run: |
+          jq '."${{ steps.version.outputs.version }}" = "1.5.0"' versions.json > versions.tmp.json
+          mv versions.tmp.json versions.json
+
       - name: Create release archive
         run: |
           mkdir -p release
@@ -53,23 +58,60 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          name: Sage AI Plugin v${{ steps.version.outputs.version }}
+          name: Sage AI v${{ steps.version.outputs.version }}
           body: |
-            ## Installation
+            ## 🎉 Sage AI v${{ steps.version.outputs.version }}
 
-            ### From Obsidian
-            1. Open Settings > Community Plugins
-            2. Search for "Sage AI"
-            3. Install and Enable
+            AI-powered semantic search and document tools for Obsidian, running entirely locally.
 
-            ### Manual Installation
-            1. Download `sage-ai-${{ steps.version.outputs.version }}.zip`
-            2. Extract to `.obsidian/plugins/sage-ai/`
-            3. Enable in Settings > Community Plugins
+            ## ✨ Features
 
-            ## Requirements
-            - [Ollama](https://ollama.ai/) with bge-m3 model
-            - [Qdrant](https://qdrant.tech/) vector database
+            - **Semantic Search** - Search by meaning, not just keywords
+            - **Link Suggestions** - AI-powered document connections
+            - **Vault Health Check** - 8 diagnostic checks for vault issues
+            - **Document Comparison** - Analyze similarities between documents
+            - **Jump to Document** - Fast fuzzy finder
+            - **Privacy First** - Everything runs locally (Ollama + Qdrant)
+
+            ## 📦 Installation
+
+            ### Method 1: Automatic (Recommended)
+            1. Download `sage-ai-${{ steps.version.outputs.version }}.zip` below
+            2. Extract to `.obsidian/plugins/sage-ai/` in your vault
+            3. Reload Obsidian (Cmd/Ctrl + R)
+            4. Enable "Sage AI" in Settings > Community Plugins
+
+            ### Method 2: Manual
+            1. Download `main.js`, `manifest.json`, and `styles.css` below
+            2. Create folder `.obsidian/plugins/sage-ai/` in your vault
+            3. Copy the 3 files into that folder
+            4. Reload Obsidian (Cmd/Ctrl + R)
+            5. Enable "Sage AI" in Settings > Community Plugins
+
+            ## ⚙️ Prerequisites
+
+            Before using Sage AI, you need these services running locally:
+
+            **1. Ollama** with bge-m3 model:
+            ```bash
+            # macOS/Linux
+            brew install ollama
+            ollama serve
+            ollama pull bge-m3
+            ```
+
+            **2. Qdrant** vector database:
+            ```bash
+            docker run -p 6333:6333 qdrant/qdrant
+            ```
+
+            ## 📖 Documentation
+
+            See [README](https://github.com/kakao-lucas-ms/obsidian-local-sage/tree/main/packages/obsidian-plugin) for detailed setup and usage instructions.
+
+            ## 🔒 Privacy
+
+            All processing happens locally. No data leaves your machine.
           files: |
             packages/obsidian-plugin/sage-ai-${{ steps.version.outputs.version }}.zip
             packages/obsidian-plugin/main.js
@@ -77,3 +119,4 @@ jobs:
             packages/obsidian-plugin/styles.css
           draft: false
           prerelease: false
+          generate_release_notes: true
