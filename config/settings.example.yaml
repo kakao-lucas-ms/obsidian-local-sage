@@ -1,0 +1,106 @@
+# Obsidian Local Sage Configuration
+# Copy this file to settings.yaml and customize for your environment
+
+# Obsidian Vault Configuration
+vault:
+  # Path to your Obsidian vault (will be auto-detected during install)
+  path: ~/Documents/MyVault
+  # Vault name (auto-detected from path)
+  name: MyVault
+
+# Project Paths
+project:
+  # Installation directory (usually ~/.obsidian-local-sage)
+  root: ~/.obsidian-local-sage
+  # Database path
+  db_path: ~/.obsidian-local-sage/db/automation.db
+  # Directory for search results (relative to vault)
+  search_results_dir: 검색결과
+
+# External Services
+services:
+  # Ollama Configuration (Local LLM)
+  ollama:
+    api_base: http://127.0.0.1:11434
+    model: bge-m3
+    timeout: 120
+    # Model parameters
+    embedding_dim: 1024
+
+  # Qdrant Configuration (Vector Database)
+  qdrant:
+    host: 127.0.0.1
+    port: 6333
+    collection: obsidian_docs
+    timeout: 30
+    # Vector search parameters
+    top_k: 10
+    score_threshold: 0.3
+
+# Feature Settings
+features:
+  # AI Search Configuration
+  search:
+    max_results: 8
+    min_score: 0.3
+    create_notes: true
+    # Hybrid search weights
+    vector_weight: 0.7
+    fts_weight: 0.3
+
+  # Document Jump Configuration
+  jump:
+    enable_recent_tracking: true
+    fzf_height: 60%
+    fzf_preview_window: right:50%:wrap
+    max_recent_items: 50
+
+  # Health Check Configuration
+  health_check:
+    old_document_days: 365
+    large_document_kb: 100
+    show_max_items: 20
+    # Issue types to check
+    check_empty: true
+    check_orphaned: true
+    check_broken_links: true
+    check_duplicates: true
+    check_old: true
+    check_large: true
+    check_untagged: true
+    check_todos: true
+
+  # Batch Processing Configuration
+  batch:
+    recursive_default: false
+    moc_group_by: folder  # folder | tag | date
+    backup_before_operations: true
+
+  # Link Suggestions Configuration
+  link_suggestions:
+    max_suggestions: 8
+    min_similarity: 0.4
+    exclude_current: true
+
+  # Document Comparison Configuration
+  comparison:
+    similarity_threshold_high: 0.7
+    similarity_threshold_medium: 0.4
+    show_common_elements: true
+    show_unique_keywords: true
+
+# Advanced Settings
+advanced:
+  # Debug mode (verbose logging)
+  debug: false
+  # Log file path
+  log_path: ~/.obsidian-local-sage/logs
+  # Enable automatic backups before batch operations
+  backup_before_batch: true
+  # Maximum concurrent background tasks
+  max_concurrent_tasks: 5
+  # Cache settings
+  cache:
+    enabled: true
+    ttl_seconds: 3600
+    max_size_mb: 100
